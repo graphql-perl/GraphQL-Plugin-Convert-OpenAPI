@@ -158,6 +158,8 @@ To debug, set environment variable `GRAPHQL_DEBUG` to a true value.
 
 Ed J, `<etj at cpan.org>`
 
+Parts based on [https://github.com/yarax/swagger-to-graphql](https://github.com/yarax/swagger-to-graphql)
+
 # LICENSE
 
 Copyright (C) Ed J

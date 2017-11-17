@@ -5,5 +5,7 @@ MANIFEST			This list of files
 README.md
 t/00-compile.t
 t/00-report-prereqs.t
+t/01-schema.t
+t/cpantesters-v3.json
 xt/manifest.t
 xt/pod.t

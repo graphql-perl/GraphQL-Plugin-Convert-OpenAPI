@@ -4,82 +4,20 @@ use strict;
 use warnings;
 use GraphQL::Schema;
 use GraphQL::Debug qw(_debug);
+use JSON::Validator::OpenAPI;
 
 our $VERSION = "0.03";
 use constant DEBUG => $ENV{GRAPHQL_DEBUG};
+my $validator = JSON::Validator::OpenAPI->new; # singleton
 
 my %TYPEMAP = (
-  guid => 'String',
-  wlongvarchar => 'String',
-  wvarchar => 'String',
-  wchar => 'String',
-  bigint => 'Int',
-  bit => 'Int',
-  tinyint => 'Int',
-  longvarbinary => 'String',
-  varbinary => 'String',
-  binary => 'String',
-  longvarchar => 'String',
-  unknown_type => 'String',
-  all_types => 'String',
-  char => 'String',
-  numeric => 'Float',
-  decimal => 'Float',
-  integer => 'Int',
-  smallint => 'Int',
-  float => 'Float',
-  real => 'Float',
-  double => 'Float',
-  datetime => 'DateTime',
+  string => 'String',
   date => 'DateTime',
-  interval => 'Int',
-  time => 'DateTime',
-  timestamp => 'DateTime',
-  varchar => 'String',
+  integer => 'Int',
+  number => 'Float',
   boolean => 'Boolean',
-  udt => 'String',
-  udt_locator => 'String',
-  row => 'String',
-  ref => 'String',
-  blob => 'String',
-  blob_locator => 'String',
-  clob => 'String',
-  clob_locator => 'String',
-  array => 'String',
-  array_locator => 'String',
-  multiset => 'String',
-  multiset_locator => 'String',
-  type_date => 'DateTime',
-  type_time => 'DateTime',
-  type_timestamp => 'DateTime',
-  type_time_with_timezone => 'DateTime',
-  type_timestamp_with_timezone => 'DateTime',
-  interval_year => 'Int',
-  interval_month => 'Int',
-  interval_day => 'Int',
-  interval_hour => 'Int',
-  interval_minute => 'Int',
-  interval_second => 'Int',
-  interval_year_to_month => 'Int',
-  interval_day_to_hour => 'Int',
-  interval_day_to_minute => 'Int',
-  interval_day_to_second => 'Int',
-  interval_hour_to_minute => 'Int',
-  interval_hour_to_second => 'Int',
-  interval_minute_to_second => 'Int',
-  # not DBI SQL_* types
-  int => 'Int',
-  text => 'String',
-  tinytext => 'String',
 );
 my %TYPE2SCALAR = map { ($_ => 1) } qw(ID String Int Float Boolean);
-
-sub _dbicsource2pretty {
-  my ($source) = @_;
-  $source = $source->source_name || $source;
-  $source =~ s#.*::##;
-  join '', map ucfirst, split /_+/, $source;
-}
 
 sub _apply_modifier {
   my ($modifier, $typespec) = @_;
@@ -98,40 +36,40 @@ sub _remove_modifiers {
 }
 
 sub _type2createinput {
-  my ($name, $fields, $name2pk21, $fk21, $column21, $name2type) = @_;
+  my ($name, $fields, $name2pk21, $fk21, $prop21, $name2type) = @_;
   +{
     kind => 'input',
     name => "${name}CreateInput",
     fields => {
       (map { ($_ => $fields->{$_}) }
-        grep !$name2pk21->{$name}{$_} && !$fk21->{$_}, keys %$column21),
+        grep !$name2pk21->{$name}{$_} && !$fk21->{$_}, keys %$prop21),
       _make_fk_fields($name, $fk21, $name2type, $name2pk21),
     },
   };
 }
 
 sub _type2searchinput {
-  my ($name, $column2rawtype, $name2pk21, $column21, $name2type) = @_;
+  my ($name, $prop2rawtype, $name2pk21, $prop21, $name2type) = @_;
   +{
     kind => 'input',
     name => "${name}SearchInput",
     fields => {
-      (map { ($_ => { type => $column2rawtype->{$_} }) }
-        grep !$name2pk21->{$name}{$_}, keys %$column21),
+      (map { ($_ => { type => $prop2rawtype->{$_} }) }
+        grep !$name2pk21->{$name}{$_}, keys %$prop21),
     },
   };
 }
 
 sub _type2mutateinput {
-  my ($name, $column2rawtype, $fields, $name2pk21, $column21) = @_;
+  my ($name, $prop2rawtype, $fields, $name2pk21, $prop21) = @_;
   +{
     kind => 'input',
     name => "${name}MutateInput",
     fields => {
-      (map { ($_ => { type => $column2rawtype->{$_} }) }
-        grep !$name2pk21->{$name}{$_}, keys %$column21),
+      (map { ($_ => { type => $prop2rawtype->{$_} }) }
+        grep !$name2pk21->{$name}{$_}, keys %$prop21),
       (map { ($_ => $fields->{$_}) }
-        grep $name2pk21->{$name}{$_}, keys %$column21),
+        grep $name2pk21->{$name}{$_}, keys %$prop21),
     },
   };
 }
@@ -182,71 +120,130 @@ sub _make_update_arg {
   +{ map { $_ => $input->{$_} } grep !$pk21->{$_}, keys %$input };
 }
 
+sub _trim_name {
+  my ($name) = @_;
+  $name =~ s#[^a-zA-Z0-9_]##g;
+  $name;
+}
+
+sub _get_type {
+  my ($info, $maybe_name, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  DEBUG and _debug("_get_type($maybe_name)", $info);
+  return 'String' if !%$info; # bodge but unavoidable
+  if ($info->{'$ref'}) {
+    DEBUG and _debug("_get_type($maybe_name) ref");
+    my $rawtype = $info->{'$ref'};
+    $rawtype =~ s:^#/definitions/::;
+    return $rawtype;
+  }
+  if ($info->{additionalProperties}) {
+    DEBUG and _debug("_get_type($maybe_name) aP");
+    return _get_type(
+      {
+        type => 'array',
+        items => {
+          type => 'object',
+          properties => {
+            key => { type => 'string' },
+            value => $info->{additionalProperties},
+          },
+        },
+      },
+      $maybe_name,
+      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+    );
+  }
+  if ($info->{properties}) {
+    DEBUG and _debug("_get_type($maybe_name) p");
+    return _get_spec_from_info(
+      $maybe_name, $info,
+      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+    );
+  }
+  if ($info->{type} eq 'array') {
+    DEBUG and _debug("_get_type($maybe_name) a");
+    return _apply_modifier(
+      'list',
+      _get_type(
+        $info->{items}, $maybe_name,
+        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      )
+    );
+  }
+  DEBUG and _debug("_get_type($maybe_name) simple");
+  $TYPEMAP{$info->{type}}
+    // die "'$maybe_name' unknown data type: @{[$info->{type}]}\n";
+}
+
+sub _get_spec_from_info {
+  my (
+    $name, $refinfo,
+    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+  ) = @_;
+  DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
+  my %fields;
+  my $properties = $refinfo->{properties};
+  my %required = map { ($_ => 1) } @{$refinfo->{required}};
+  for my $prop (keys %$properties) {
+    my $info = $properties->{$prop};
+    DEBUG and _debug("_get_spec_from_info($name) $prop", $info);
+    my $rawtype = _get_type(
+      $info, $name.ucfirst($prop),
+      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+    );
+    $name2prop2rawtype->{$name}{$prop} = $rawtype;
+    my $fulltype = _apply_modifier(
+      $required{$prop} && 'non_null',
+      $rawtype,
+    );
+    $fields{$prop} = +{ type => $fulltype };
+    $fields{$prop}->{description} = $info->{description}
+      if $info->{description};
+    $name2fk21->{$name}{$prop} = 1 if $info->{is_foreign_key};
+    $name2prop21->{$name}{$prop} = 1;
+  }
+  my $spec = +{
+    kind => 'type',
+    name => $name,
+    fields => \%fields,
+  };
+  $spec->{description} = $properties->{title} if $properties->{title};
+  $spec->{description} = $properties->{description}
+    if $properties->{description};
+  $name2type->{$name} = $spec;
+  $name;
+}
+
 sub to_graphql {
-  my ($class, $dbic_schema_cb) = @_;
-  my $dbic_schema = $dbic_schema_cb->();
+  my ($class, $spec) = @_;
+  my $dbic_schema_cb = undef;
+  my $openapi_schema = $validator->schema($spec)->schema;
+  my $defs = $openapi_schema->get("/definitions");
   my %root_value;
   my @ast;
   my (
-    %name2type, %name2column21, %name2pk21, %name2fk21, %name2rel21,
-    %name2column2rawtype,
+    %name2type, %name2prop21, %name2pk21, %name2fk21, %name2rel21,
+    %name2prop2rawtype,
   );
-  for my $source (map $dbic_schema->source($_), $dbic_schema->sources) {
-    my $name = _dbicsource2pretty($source);
-    my %fields;
-    my $columns_info = $source->columns_info;
-    $name2pk21{$name} = +{ map { ($_ => 1) } $source->primary_columns };
-    my %rel2info = map {
-      ($_ => $source->relationship_info($_))
-    } $source->relationships;
-    for my $column (keys %$columns_info) {
-      my $info = $columns_info->{$column};
-      DEBUG and _debug("schema_dbic2graphql($name.col)", $column, $info);
-      my $rawtype = $TYPEMAP{ lc $info->{data_type} };
-      $name2column2rawtype{$name}->{$column} = $rawtype;
-      my $fulltype = _apply_modifier(
-        !$info->{is_nullable} && 'non_null',
-        $rawtype
-          // die "'$column' unknown data type: @{[lc $info->{data_type}]}\n",
-      );
-      $fields{$column} = +{ type => $fulltype };
-      $name2fk21{$name}->{$column} = 1 if $info->{is_foreign_key};
-      $name2column21{$name}->{$column} = 1;
-    }
-    for my $rel (keys %rel2info) {
-      my $info = $rel2info{$rel};
-      DEBUG and _debug("schema_dbic2graphql($name.rel)", $rel, $info);
-      my $type = _dbicsource2pretty($info->{source});
-      $rel =~ s/_id$//; # dumb heuristic
-      delete $name2column21{$name}->{$rel}; # so it's not a "column" now
-      # if it WAS a column, capture its non-null-ness
-      my $non_null = ref(($fields{$rel} || {})->{type}) eq 'ARRAY';
-      $type = _apply_modifier('non_null', $type) if $non_null;
-      $type = _apply_modifier('list', $type) if $info->{attrs}{accessor} eq 'multi';
-      $type = _apply_modifier('non_null', $type) if $non_null; # in case list
-      $fields{$rel} = +{ type => $type };
-      $name2rel21{$name}->{$rel} = 1;
-    }
-    my $spec = +{
-      kind => 'type',
-      name => $name,
-      fields => \%fields,
-    };
-    $name2type{$name} = $spec;
-    push @ast, $spec;
+  for my $name (keys %$defs) {
+    _get_spec_from_info(
+      _trim_name($name), $defs->{$name},
+      \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+    );
   }
-  push @ast, map _type2createinput(
-    $_, $name2type{$_}->{fields}, \%name2pk21, $name2fk21{$_},
-    $name2column21{$_}, \%name2type,
-  ), keys %name2type;
-  push @ast, map _type2searchinput(
-    $_, $name2column2rawtype{$_}, \%name2pk21,
-    $name2column21{$_}, \%name2type,
-  ), keys %name2type;
-  push @ast, map _type2mutateinput(
-    $_, $name2column2rawtype{$_}, $name2type{$_}->{fields}, \%name2pk21,
-    $name2column21{$_},
-  ), keys %name2type;
+  push @ast, values %name2type;
+#  push @ast, map _type2createinput(
+#    $_, $name2type{$_}->{fields}, \%name2pk21, $name2fk21{$_},
+#    $name2prop21{$_}, \%name2type,
+#  ), keys %name2type;
+#  push @ast, map _type2searchinput(
+#    $_, $name2prop2rawtype{$_}, \%name2pk21,
+#    $name2prop21{$_}, \%name2type,
+#  ), keys %name2type;
+#  push @ast, map _type2mutateinput(
+#    $_, $name2prop2rawtype{$_}, $name2type{$_}->{fields}, \%name2pk21,
+#    $name2prop21{$_},
+#  ), keys %name2type;
   push @ast, {
     kind => 'type',
     name => 'Query',
@@ -270,21 +267,21 @@ sub to_graphql {
             )
           ];
         };
-        $root_value{$input_search_name} = sub {
-          my ($args, $context, $info) = @_;
-          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
-          [
-            $dbic_schema_cb->()->resultset($name)->search(
-              +{
-                map { ("me.$_" => $args->{input}{$_}) } keys %{$args->{input}}
-              },
-              {
-                prefetch => \@subfieldrels,
-              },
-            )
-          ];
-        };
+#        $root_value{$input_search_name} = sub {
+#          my ($args, $context, $info) = @_;
+#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
+#          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
+#          [
+#            $dbic_schema_cb->()->resultset($name)->search(
+#              +{
+#                map { ("me.$_" => $args->{input}{$_}) } keys %{$args->{input}}
+#              },
+#              {
+#                prefetch => \@subfieldrels,
+#              },
+#            )
+#          ];
+#        };
         (
           # the PKs query
           $pksearch_name => {
@@ -299,123 +296,123 @@ sub to_graphql {
               } keys %{ $name2pk21{$name} }
             },
           },
-          $input_search_name => {
-            description => 'input to search',
-            type => _apply_modifier('list', $name),
-            args => {
-              input => {
-                type => _apply_modifier('non_null', "${name}SearchInput")
-              },
-            },
-          },
+#          $input_search_name => {
+#            description => 'input to search',
+#            type => _apply_modifier('list', $name),
+#            args => {
+#              input => {
+#                type => _apply_modifier('non_null', "${name}SearchInput")
+#              },
+#            },
+#          },
         )
       } keys %name2type
     },
   };
-  push @ast, {
-    kind => 'type',
-    name => 'Mutation',
-    fields => {
-      map {
-        my $name = $_;
-        my $type = $name2type{$name};
-        my $create_name = "create$name";
-        $root_value{$create_name} = sub {
-          my ($args, $context, $info) = @_;
-          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-          DEBUG and _debug("OpenAPI.root_value($create_name)", $args, \@subfieldrels);
-          [
-            map $dbic_schema_cb->()->resultset($name)->create(
-              $_,
-              {
-                prefetch => \@subfieldrels,
-              },
-            ), @{ $args->{input} }
-          ];
-        };
-        my $update_name = "update$name";
-        $root_value{$update_name} = sub {
-          my ($args, $context, $info) = @_;
-          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-          DEBUG and _debug("OpenAPI.root_value($update_name)", $args, \@subfieldrels);
-          [
-            map {
-              my $input = $_;
-              my $row = $dbic_schema_cb->()->resultset($name)->find(
-                +{
-                  map {
-                    my $key = $_;
-                    ("me.$key" => $input->{$key})
-                  } keys %{$name2pk21{$name}}
-                },
-                {
-                  prefetch => \@subfieldrels,
-                },
-              );
-              $row
-                ? $row->update(
-                  _make_update_arg($name, $name2pk21{$name}, $input)
-                )->discard_changes
-                : GraphQL::Error->coerce("$name not found");
-            } @{ $args->{input} }
-          ];
-        };
-        my $delete_name = "delete$name";
-        $root_value{$delete_name} = sub {
-          my ($args, $context, $info) = @_;
-          DEBUG and _debug("OpenAPI.root_value($delete_name)", $args);
-          [
-            map {
-              my $input = $_;
-              my $row = $dbic_schema_cb->()->resultset($name)->find(
-                +{
-                  map {
-                    my $key = $_;
-                    ("me.$key" => $input->{$key})
-                  } keys %{$name2pk21{$name}}
-                },
-              );
-              $row
-                ? $row->delete && 1
-                : GraphQL::Error->coerce("$name not found");
-            } @{ $args->{input} }
-          ];
-        };
-        (
-          $create_name => {
-            type => _apply_modifier('list', $name),
-            args => {
-              input => { type => _apply_modifier('non_null',
-                _apply_modifier('list',
-                  _apply_modifier('non_null', "${name}CreateInput")
-                )
-              ) },
-            },
-          },
-          $update_name => {
-            type => _apply_modifier('list', $name),
-            args => {
-              input => { type => _apply_modifier('non_null',
-                _apply_modifier('list',
-                  _apply_modifier('non_null', "${name}MutateInput")
-                )
-              ) },
-            },
-          },
-          $delete_name => {
-            type => _apply_modifier('list', 'Boolean'),
-            args => {
-              input => { type => _apply_modifier('non_null',
-                _apply_modifier('list',
-                  _apply_modifier('non_null', "${name}MutateInput")
-                )
-              ) },
-            },
-          },
-        )
-      } keys %name2type
-    },
-  };
+#  push @ast, {
+#    kind => 'type',
+#    name => 'Mutation',
+#    fields => {
+#      map {
+#        my $name = $_;
+#        my $type = $name2type{$name};
+#        my $create_name = "create$name";
+#        $root_value{$create_name} = sub {
+#          my ($args, $context, $info) = @_;
+#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
+#          DEBUG and _debug("OpenAPI.root_value($create_name)", $args, \@subfieldrels);
+#          [
+#            map $dbic_schema_cb->()->resultset($name)->create(
+#              $_,
+#              {
+#                prefetch => \@subfieldrels,
+#              },
+#            ), @{ $args->{input} }
+#          ];
+#        };
+#        my $update_name = "update$name";
+#        $root_value{$update_name} = sub {
+#          my ($args, $context, $info) = @_;
+#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
+#          DEBUG and _debug("OpenAPI.root_value($update_name)", $args, \@subfieldrels);
+#          [
+#            map {
+#              my $input = $_;
+#              my $row = $dbic_schema_cb->()->resultset($name)->find(
+#                +{
+#                  map {
+#                    my $key = $_;
+#                    ("me.$key" => $input->{$key})
+#                  } keys %{$name2pk21{$name}}
+#                },
+#                {
+#                  prefetch => \@subfieldrels,
+#                },
+#              );
+#              $row
+#                ? $row->update(
+#                  _make_update_arg($name, $name2pk21{$name}, $input)
+#                )->discard_changes
+#                : GraphQL::Error->coerce("$name not found");
+#            } @{ $args->{input} }
+#          ];
+#        };
+#        my $delete_name = "delete$name";
+#        $root_value{$delete_name} = sub {
+#          my ($args, $context, $info) = @_;
+#          DEBUG and _debug("OpenAPI.root_value($delete_name)", $args);
+#          [
+#            map {
+#              my $input = $_;
+#              my $row = $dbic_schema_cb->()->resultset($name)->find(
+#                +{
+#                  map {
+#                    my $key = $_;
+#                    ("me.$key" => $input->{$key})
+#                  } keys %{$name2pk21{$name}}
+#                },
+#              );
+#              $row
+#                ? $row->delete && 1
+#                : GraphQL::Error->coerce("$name not found");
+#            } @{ $args->{input} }
+#          ];
+#        };
+#        (
+#          $create_name => {
+#            type => _apply_modifier('list', $name),
+#            args => {
+#              input => { type => _apply_modifier('non_null',
+#                _apply_modifier('list',
+#                  _apply_modifier('non_null', "${name}CreateInput")
+#                )
+#              ) },
+#            },
+#          },
+#          $update_name => {
+#            type => _apply_modifier('list', $name),
+#            args => {
+#              input => { type => _apply_modifier('non_null',
+#                _apply_modifier('list',
+#                  _apply_modifier('non_null', "${name}MutateInput")
+#                )
+#              ) },
+#            },
+#          },
+#          $delete_name => {
+#            type => _apply_modifier('list', 'Boolean'),
+#            args => {
+#              input => { type => _apply_modifier('non_null',
+#                _apply_modifier('list',
+#                  _apply_modifier('non_null', "${name}MutateInput")
+#                )
+#              ) },
+#            },
+#          },
+#        )
+#      } keys %name2type
+#    },
+#  };
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => \%root_value,
@@ -588,6 +585,8 @@ To debug, set environment variable C<GRAPHQL_DEBUG> to a true value.
 =head1 AUTHOR
 
 Ed J, C<< <etj at cpan.org> >>
+
+Parts based on L<https://github.com/yarax/swagger-to-graphql>
 
 =head1 LICENSE
 
