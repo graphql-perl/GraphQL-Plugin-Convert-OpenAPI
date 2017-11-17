@@ -11,10 +11,12 @@ WriteMakefile(
   LICENSE          => 'artistic_2',
   MIN_PERL_VERSION => '5.014',
   CONFIGURE_REQUIRES => {
-    'ExtUtils::MakeMaker' => '0',
+    'ExtUtils::MakeMaker' => '7.10',
   },
   TEST_REQUIRES => {
     'Test::More' => '0.98',
+    'JSON::Validator' => 0,
+    'GraphQL' => '0.21', # DateTime scalar type
   },
   PREREQ_PM => {
     'JSON::Validator' => 0,
