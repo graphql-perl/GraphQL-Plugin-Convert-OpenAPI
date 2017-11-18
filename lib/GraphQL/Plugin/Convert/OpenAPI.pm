@@ -315,8 +315,10 @@ sub _kind2name2endpoint {
         })
       } @parameters;
       DEBUG and _debug("_kind2name2endpoint($op_id) params", \%args);
+      my $description = $info->{summary} || $info->{description};
       $kind2name2endpoint{$kind}->{$op_id} = +{
         type => $union,
+        $description ? (description => $description) : (),
         $kind eq 'query' && %args ? (args => \%args) : (),
       };
     }
