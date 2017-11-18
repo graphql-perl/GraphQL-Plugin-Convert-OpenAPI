@@ -203,7 +203,7 @@ sub _get_spec_from_info {
     $name2prop21->{$name}{$prop} = 1;
   }
   my $spec = +{
-    kind => 'type',
+    kind => $refinfo->{discriminator} ? 'interface' : 'type',
     name => $name,
     fields => \%fields,
   };

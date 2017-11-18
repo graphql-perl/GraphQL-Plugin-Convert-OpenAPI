@@ -52,7 +52,7 @@ type ErrorErrors {
 type Grade {
 }
 
-type Language {
+interface Language {
   archname: String!
   build: String
   name: String!
