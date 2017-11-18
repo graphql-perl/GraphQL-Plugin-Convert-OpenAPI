@@ -207,9 +207,9 @@ sub _get_spec_from_info {
     name => $name,
     fields => \%fields,
   };
-  $spec->{description} = $properties->{title} if $properties->{title};
-  $spec->{description} = $properties->{description}
-    if $properties->{description};
+  $spec->{description} = $refinfo->{title} if $refinfo->{title};
+  $spec->{description} = $refinfo->{description}
+    if $refinfo->{description};
   $name2type->{$name} = $spec;
   $name;
 }

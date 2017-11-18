@@ -38,6 +38,7 @@ type EnvironmentToolchain {
   value: String
 }
 
+# OpenAPI Error Object
 type Error {
   errors: [ErrorErrors]
 }
@@ -49,6 +50,7 @@ type ErrorErrors {
   path: String
 }
 
+# The report grade. Pass is passing tests. Fail is failing tests. NA is the distribution cannot be used on the system. Unknown is any other problem.
 type Grade {
 }
 
@@ -73,9 +75,11 @@ type NewReport {
   result: Result!
 }
 
+# Language data for Perl 5 reports
 type Perl5 {
 }
 
+# Language data for Perl 6 reports
 type Perl6 {
 }
 
@@ -112,6 +116,7 @@ type Query {
   upload: [Upload]
 }
 
+# A summary of test reports for a single CPAN release
 type Release {
   # The CPAN ID of the author who released this version of this distribution
   author: String
@@ -129,9 +134,11 @@ type Release {
   version: String
 }
 
+# CPAN Testers report
 type Report {
 }
 
+# Flattened summary data from the test report data structure
 type ReportSummary {
   # The date/time of the report in ISO8601 format
   date: String
@@ -191,6 +198,7 @@ type SystemVariables {
   value: String
 }
 
+# At least one of the properties must be set
 type TestOutput {
   build: String
   configure: String
@@ -199,6 +207,7 @@ type TestOutput {
   uncategorized: String
 }
 
+# A release to CPAN
 type Upload {
   # The CPAN ID of the author who released this version of this distribution
   author: String
