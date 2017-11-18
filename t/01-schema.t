@@ -239,7 +239,7 @@ type Upload {
   # The filename on PAUSE, without the author directory
   filename: String
   # The date/time the file was released to CPAN, in UTC
-  released: String
+  released: DateTime
   # The distribution release version
   version: String
 }
