@@ -18,6 +18,8 @@ my %TYPEMAP = (
   boolean => 'Boolean',
 );
 my %TYPE2SCALAR = map { ($_ => 1) } qw(ID String Int Float Boolean);
+my %METHOD2MUTATION = map { ($_ => 1) } qw(post put patch delete);
+my @METHODS = (keys %METHOD2MUTATION, qw(get options head));
 
 sub _apply_modifier {
   my ($modifier, $typespec) = @_;
@@ -256,6 +258,56 @@ sub _get_spec_from_info {
   $name;
 }
 
+sub _make_union {
+  my ($types, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my %seen;
+  my $types2 = [ sort grep !$seen{$_}++, map _remove_modifiers($_), @$types ];
+  return $types->[0] if @$types == 1; # no need for a union
+  my $typename = join '', @$types2, 'Union';
+  DEBUG and _debug("_make_union", $types, $types2, $typename);
+  $name2type->{$typename} ||= {
+    name => $typename,
+    kind => 'union',
+    types => $types2,
+  };
+  $typename;
+}
+
+sub _kind2name2endpoint {
+  my ($paths, $schema, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my %kind2name2endpoint;
+  for my $path (keys %$paths) {
+    for my $method (grep $paths->{$path}{$_}, @METHODS) {
+      my $info = $paths->{$path}{$method};
+      my $op_id = $info->{operationId} || $method.'_'._trim_name($path);
+      my $kind = $METHOD2MUTATION{$method} ? 'mutation' : 'query';
+      my @successresponses = map $info->{responses}{$_},
+        grep /^2/, keys %{$info->{responses}};
+      @successresponses = map {
+        if (my $ref = $_->{'$ref'}) {
+          $ref =~ s{^#}{};
+          $schema->get($ref)
+        } else {
+          $_
+        }
+      } @successresponses;
+      DEBUG and _debug("_kind2name2endpoint($path)($method)($op_id)", $info->{responses}, \@successresponses);
+      my @responsetypes = map _get_type(
+        $_->{schema}, 'param',
+        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      ), @successresponses;
+      my $union = _make_union(
+        \@responsetypes,
+        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      );
+      $kind2name2endpoint{$kind}->{$op_id} = +{
+        type => $union,
+      };
+    }
+  }
+  \%kind2name2endpoint;
+}
+
 sub to_graphql {
   my ($class, $spec) = @_;
   my $dbic_schema_cb = undef;
@@ -281,6 +333,10 @@ sub to_graphql {
       \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
     );
   }
+  my $kind2name2endpoint = _kind2name2endpoint(
+    $openapi_schema->get("/paths"), $openapi_schema,
+    \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+  );
   push @ast, values %name2type;
 #  push @ast, map _type2createinput(
 #    $_, $name2type{$_}->{fields}, \%name2pk21, $name2fk21{$_},
@@ -300,11 +356,7 @@ sub to_graphql {
     fields => {
       map {
         my $name = $_;
-        my $type = $name2type{$name};
-        my $pksearch_name = lcfirst $name;
-        my $input_search_name = "search$name";
-        # TODO now only one deep, no handle fragments or abstract types
-        $root_value{$pksearch_name} = sub {
+        $root_value{$name} = sub {
           my ($args, $context, $info) = @_;
           my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
           DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
@@ -317,152 +369,37 @@ sub to_graphql {
             )
           ];
         };
-#        $root_value{$input_search_name} = sub {
-#          my ($args, $context, $info) = @_;
-#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-#          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
-#          [
-#            $dbic_schema_cb->()->resultset($name)->search(
-#              +{
-#                map { ("me.$_" => $args->{input}{$_}) } keys %{$args->{input}}
-#              },
-#              {
-#                prefetch => \@subfieldrels,
-#              },
-#            )
-#          ];
-#        };
         (
-          # the PKs query
-          $pksearch_name => {
-            type => _apply_modifier('list', $name),
-            args => {
-              map {
-                $_ => {
-                  type => _apply_modifier('non_null', _apply_modifier('list',
-                    _apply_modifier('non_null', $type->{fields}{$_}{type})
-                  ))
-                }
-              } keys %{ $name2pk21{$name} }
-            },
-          },
-#          $input_search_name => {
-#            description => 'input to search',
-#            type => _apply_modifier('list', $name),
-#            args => {
-#              input => {
-#                type => _apply_modifier('non_null', "${name}SearchInput")
-#              },
-#            },
-#          },
+          $name => $kind2name2endpoint->{query}{$name},
         )
-      } keys %name2type
+      } keys %{ $kind2name2endpoint->{query} }
     },
   };
-#  push @ast, {
-#    kind => 'type',
-#    name => 'Mutation',
-#    fields => {
-#      map {
-#        my $name = $_;
-#        my $type = $name2type{$name};
-#        my $create_name = "create$name";
-#        $root_value{$create_name} = sub {
-#          my ($args, $context, $info) = @_;
-#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-#          DEBUG and _debug("OpenAPI.root_value($create_name)", $args, \@subfieldrels);
-#          [
-#            map $dbic_schema_cb->()->resultset($name)->create(
-#              $_,
-#              {
-#                prefetch => \@subfieldrels,
-#              },
-#            ), @{ $args->{input} }
-#          ];
-#        };
-#        my $update_name = "update$name";
-#        $root_value{$update_name} = sub {
-#          my ($args, $context, $info) = @_;
-#          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-#          DEBUG and _debug("OpenAPI.root_value($update_name)", $args, \@subfieldrels);
-#          [
-#            map {
-#              my $input = $_;
-#              my $row = $dbic_schema_cb->()->resultset($name)->find(
-#                +{
-#                  map {
-#                    my $key = $_;
-#                    ("me.$key" => $input->{$key})
-#                  } keys %{$name2pk21{$name}}
-#                },
-#                {
-#                  prefetch => \@subfieldrels,
-#                },
-#              );
-#              $row
-#                ? $row->update(
-#                  _make_update_arg($name, $name2pk21{$name}, $input)
-#                )->discard_changes
-#                : GraphQL::Error->coerce("$name not found");
-#            } @{ $args->{input} }
-#          ];
-#        };
-#        my $delete_name = "delete$name";
-#        $root_value{$delete_name} = sub {
-#          my ($args, $context, $info) = @_;
-#          DEBUG and _debug("OpenAPI.root_value($delete_name)", $args);
-#          [
-#            map {
-#              my $input = $_;
-#              my $row = $dbic_schema_cb->()->resultset($name)->find(
-#                +{
-#                  map {
-#                    my $key = $_;
-#                    ("me.$key" => $input->{$key})
-#                  } keys %{$name2pk21{$name}}
-#                },
-#              );
-#              $row
-#                ? $row->delete && 1
-#                : GraphQL::Error->coerce("$name not found");
-#            } @{ $args->{input} }
-#          ];
-#        };
-#        (
-#          $create_name => {
-#            type => _apply_modifier('list', $name),
-#            args => {
-#              input => { type => _apply_modifier('non_null',
-#                _apply_modifier('list',
-#                  _apply_modifier('non_null', "${name}CreateInput")
-#                )
-#              ) },
-#            },
-#          },
-#          $update_name => {
-#            type => _apply_modifier('list', $name),
-#            args => {
-#              input => { type => _apply_modifier('non_null',
-#                _apply_modifier('list',
-#                  _apply_modifier('non_null', "${name}MutateInput")
-#                )
-#              ) },
-#            },
-#          },
-#          $delete_name => {
-#            type => _apply_modifier('list', 'Boolean'),
-#            args => {
-#              input => { type => _apply_modifier('non_null',
-#                _apply_modifier('list',
-#                  _apply_modifier('non_null', "${name}MutateInput")
-#                )
-#              ) },
-#            },
-#          },
-#        )
-#      } keys %name2type
-#    },
-#  };
+  push @ast, {
+    kind => 'type',
+    name => 'Mutation',
+    fields => {
+      map {
+        my $name = $_;
+        $root_value{$name} = sub {
+          my ($args, $context, $info) = @_;
+          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
+          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
+          [
+            $dbic_schema_cb->()->resultset($name)->search(
+              +{ map { ("me.$_" => $args->{$_}) } keys %$args },
+              {
+                prefetch => \@subfieldrels,
+              },
+            )
+          ];
+        };
+        (
+          $name => $kind2name2endpoint->{mutation}{$name},
+        )
+      } keys %{ $kind2name2endpoint->{mutation} }
+    },
+  };
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => \%root_value,

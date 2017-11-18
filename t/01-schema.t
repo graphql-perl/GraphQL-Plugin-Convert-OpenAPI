@@ -76,6 +76,10 @@ type LanguageVariables {
   value: String
 }
 
+type Mutation {
+  v3_report_post: AcceptedReports
+}
+
 type NewReport {
   comments: String
   distribution: Distribution!
@@ -118,31 +122,14 @@ type Prerequisite {
 }
 
 type Query {
-  acceptedReports: [AcceptedReports]
-  distribution: [Distribution]
-  environment: [Environment]
-  environmentToolchain: [EnvironmentToolchain]
-  error: [Error]
-  errorErrors: [ErrorErrors]
-  grade: [Grade]
-  language: [Language]
-  languageName: [LanguageName]
-  languageVariables: [LanguageVariables]
-  newReport: [NewReport]
-  perl5: [Perl5]
-  perl6: [Perl6]
-  perl6Backend: [Perl6Backend]
-  prerequisite: [Prerequisite]
-  release: [Release]
-  report: [Report]
-  reportSummary: [ReportSummary]
-  reporter: [Reporter]
-  result: [Result]
-  resultTodo: [ResultTodo]
-  system: [System]
-  systemVariables: [SystemVariables]
-  testOutput: [TestOutput]
-  upload: [Upload]
+  v3_release_all: [Release]
+  v3_release_author: [Release]
+  v3_release_dist: [Release]
+  v3_report_get: Report
+  v3_summary: [ReportSummary]
+  v3_upload_all: [Upload]
+  v3_upload_author: [Upload]
+  v3_upload_dist: [Upload]
 }
 
 # A summary of test reports for a single CPAN release
