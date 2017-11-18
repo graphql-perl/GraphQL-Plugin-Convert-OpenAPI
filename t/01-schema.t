@@ -51,15 +51,24 @@ type ErrorErrors {
 }
 
 # The report grade. Pass is passing tests. Fail is failing tests. NA is the distribution cannot be used on the system. Unknown is any other problem.
-type Grade {
+enum Grade {
+  fail
+  na
+  pass
+  unknown
 }
 
 interface Language {
   archname: String!
   build: String
-  name: String!
+  name: LanguageName!
   variables: [LanguageVariables]
   version: String!
+}
+
+enum LanguageName {
+  Perl5
+  Perl6
 }
 
 type LanguageVariables {
@@ -80,7 +89,7 @@ type Perl5 implements Language {
   archname: String!
   build: String
   commit_id: String
-  name: String!
+  name: LanguageName!
   variables: [LanguageVariables]
   version: String
 }
@@ -91,7 +100,7 @@ type Perl6 implements Language {
   backend: Perl6Backend
   build: String
   implementation: String
-  name: String!
+  name: LanguageName!
   variables: [LanguageVariables]
   version: String!
 }
@@ -117,6 +126,7 @@ type Query {
   errorErrors: [ErrorErrors]
   grade: [Grade]
   language: [Language]
+  languageName: [LanguageName]
   languageVariables: [LanguageVariables]
   newReport: [NewReport]
   perl5: [Perl5]

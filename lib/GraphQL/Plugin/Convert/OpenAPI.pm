@@ -153,7 +153,7 @@ sub _get_type {
       $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
     );
   }
-  if ($info->{properties} or $info->{allOf}) {
+  if ($info->{properties} or $info->{allOf} or $info->{enum}) {
     DEBUG and _debug("_get_type($maybe_name) p");
     return _get_spec_from_info(
       $maybe_name, $info,
@@ -225,6 +225,18 @@ sub _get_spec_from_info {
         )});
       }
     }
+  } elsif (my $values = $refinfo->{enum}) {
+    DEBUG and _debug("_get_spec_from_info($name)(enum)", $values);
+    my $spec = +{
+      kind => 'enum',
+      name => $name,
+      values => +{ map { (_trim_name($_) => {}) } @$values },
+    };
+    $spec->{description} = $refinfo->{title} if $refinfo->{title};
+    $spec->{description} = $refinfo->{description}
+      if $refinfo->{description};
+    $name2type->{$name} = $spec;
+    return $name;
   } else {
     %$fields = (%$fields, %{_refinfo2fields(
       $name, $refinfo,
