@@ -76,11 +76,29 @@ type NewReport {
 }
 
 # Language data for Perl 5 reports
-type Perl5 {
+type Perl5 implements Language {
+  archname: String!
+  build: String
+  commit_id: String
+  name: String!
+  variables: [LanguageVariables]
+  version: String
 }
 
 # Language data for Perl 6 reports
-type Perl6 {
+type Perl6 implements Language {
+  archname: String!
+  backend: Perl6Backend
+  build: String
+  implementation: String
+  name: String!
+  variables: [LanguageVariables]
+  version: String!
+}
+
+type Perl6Backend {
+  engine: String
+  version: String
 }
 
 type Prerequisite {
@@ -103,6 +121,7 @@ type Query {
   newReport: [NewReport]
   perl5: [Perl5]
   perl6: [Perl6]
+  perl6Backend: [Perl6Backend]
   prerequisite: [Prerequisite]
   release: [Release]
   report: [Report]
@@ -136,6 +155,13 @@ type Release {
 
 # CPAN Testers report
 type Report {
+  comments: String
+  created: String
+  distribution: Distribution!
+  environment: Environment!
+  id: String!
+  reporter: Reporter!
+  result: Result!
 }
 
 # Flattened summary data from the test report data structure

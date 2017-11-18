@@ -153,7 +153,7 @@ sub _get_type {
       $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
     );
   }
-  if ($info->{properties}) {
+  if ($info->{properties} or $info->{allOf}) {
     DEBUG and _debug("_get_type($maybe_name) p");
     return _get_spec_from_info(
       $maybe_name, $info,
@@ -207,14 +207,35 @@ sub _get_spec_from_info {
     $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
   ) = @_;
   DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
-  my $fields = _refinfo2fields(
-    $name, $refinfo,
-    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
-  );
+  my %implements;
+  my $fields = {};
+  if ($refinfo->{allOf}) {
+    for my $schema (@{$refinfo->{allOf}}) {
+      DEBUG and _debug("_get_spec_from_info($name)(allOf)", $schema);
+      if ($schema->{'$ref'}) {
+        my $othertype = _get_type($schema, '$ref');
+        my $othertypedef = $name2type->{$othertype};
+        push @{$implements{interfaces}}, $othertype
+          if $othertypedef->{kind} eq 'interface';
+        %$fields = (%$fields, %{$othertypedef->{fields}});
+      } else {
+        %$fields = (%$fields, %{_refinfo2fields(
+          $name, $schema,
+          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        )});
+      }
+    }
+  } else {
+    %$fields = (%$fields, %{_refinfo2fields(
+      $name, $refinfo,
+      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+    )});
+  }
   my $spec = +{
     kind => $refinfo->{discriminator} ? 'interface' : 'type',
     name => $name,
     fields => $fields,
+    %implements,
   };
   $spec->{description} = $refinfo->{title} if $refinfo->{title};
   $spec->{description} = $refinfo->{description}
@@ -234,7 +255,15 @@ sub to_graphql {
     %name2type, %name2prop21, %name2pk21, %name2fk21, %name2rel21,
     %name2prop2rawtype,
   );
-  for my $name (keys %$defs) {
+  # all non-interface-consumers first
+  for my $name (grep !$defs->{$_}{allOf}, keys %$defs) {
+    _get_spec_from_info(
+      _trim_name($name), $defs->{$name},
+      \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+    );
+  }
+  # now interface-consumers and can now put in interface fields too
+  for my $name (grep $defs->{$_}{allOf}, keys %$defs) {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
       \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
