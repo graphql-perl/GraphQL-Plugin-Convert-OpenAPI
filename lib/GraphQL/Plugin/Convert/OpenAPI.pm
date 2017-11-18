@@ -273,6 +273,14 @@ sub _make_union {
   $typename;
 }
 
+sub _resolve_schema_ref {
+  my ($obj, $schema) = @_;
+  my $ref = $obj->{'$ref'};
+  return $obj if !$ref;
+  $ref =~ s{^#}{};
+  $schema->get($ref);
+}
+
 sub _kind2name2endpoint {
   my ($paths, $schema, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
   my %kind2name2endpoint;
@@ -281,16 +289,9 @@ sub _kind2name2endpoint {
       my $info = $paths->{$path}{$method};
       my $op_id = $info->{operationId} || $method.'_'._trim_name($path);
       my $kind = $METHOD2MUTATION{$method} ? 'mutation' : 'query';
-      my @successresponses = map $info->{responses}{$_},
+      my @successresponses = map _resolve_schema_ref($_, $schema),
+        map $info->{responses}{$_},
         grep /^2/, keys %{$info->{responses}};
-      @successresponses = map {
-        if (my $ref = $_->{'$ref'}) {
-          $ref =~ s{^#}{};
-          $schema->get($ref)
-        } else {
-          $_
-        }
-      } @successresponses;
       DEBUG and _debug("_kind2name2endpoint($path)($method)($op_id)", $info->{responses}, \@successresponses);
       my @responsetypes = map _get_type(
         $_->{schema}, 'param',
