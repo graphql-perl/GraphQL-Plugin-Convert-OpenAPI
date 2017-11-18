@@ -303,8 +303,21 @@ sub _kind2name2endpoint {
         \@responsetypes,
         $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
       );
+      my @parameters = map _resolve_schema_ref($_, $schema),
+        @{ $info->{parameters} };
+      my %args = map {
+        ($_->{name} => {
+          type => _get_type(
+            $_->{schema} ? $_->{schema} : $_, "${op_id}_$_->{name}",
+            $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+          ),
+          $_->{description} ? (description => $_->{description}) : (),
+        })
+      } @parameters;
+      DEBUG and _debug("_kind2name2endpoint($op_id) params", \%args);
       $kind2name2endpoint{$kind}->{$op_id} = +{
         type => $union,
+        $kind eq 'query' && %args ? (args => \%args) : (),
       };
     }
   }

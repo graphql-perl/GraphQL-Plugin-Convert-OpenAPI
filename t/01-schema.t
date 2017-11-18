@@ -123,13 +123,13 @@ type Prerequisite {
 
 type Query {
   v3_release_all: [Release]
-  v3_release_author: [Release]
-  v3_release_dist: [Release]
-  v3_report_get: Report
-  v3_summary: [ReportSummary]
-  v3_upload_all: [Upload]
-  v3_upload_author: [Upload]
-  v3_upload_dist: [Upload]
+  v3_release_author(author: String, since: DateTime): [Release]
+  v3_release_dist(dist: String, since: DateTime): [Release]
+  v3_report_get(id: String): Report
+  v3_summary(dist: String, version: String): [ReportSummary]
+  v3_upload_all(since: DateTime): [Upload]
+  v3_upload_author(author: String, since: DateTime): [Upload]
+  v3_upload_dist(dist: String, since: DateTime): [Upload]
 }
 
 # A summary of test reports for a single CPAN release
