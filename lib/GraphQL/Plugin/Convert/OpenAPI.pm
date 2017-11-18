@@ -175,18 +175,14 @@ sub _get_type {
     // die "'$maybe_name' unknown data type: @{[$info->{type}]}\n";
 }
 
-sub _get_spec_from_info {
-  my (
-    $name, $refinfo,
-    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
-  ) = @_;
-  DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
+sub _refinfo2fields {
+  my ($name, $refinfo, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
   my %fields;
   my $properties = $refinfo->{properties};
   my %required = map { ($_ => 1) } @{$refinfo->{required}};
   for my $prop (keys %$properties) {
     my $info = $properties->{$prop};
-    DEBUG and _debug("_get_spec_from_info($name) $prop", $info);
+    DEBUG and _debug("_refinfo2fields($name) $prop", $info);
     my $rawtype = _get_type(
       $info, $name.ucfirst($prop),
       $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
@@ -202,10 +198,23 @@ sub _get_spec_from_info {
     $name2fk21->{$name}{$prop} = 1 if $info->{is_foreign_key};
     $name2prop21->{$name}{$prop} = 1;
   }
+  \%fields;
+}
+
+sub _get_spec_from_info {
+  my (
+    $name, $refinfo,
+    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+  ) = @_;
+  DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
+  my $fields = _refinfo2fields(
+    $name, $refinfo,
+    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+  );
   my $spec = +{
     kind => $refinfo->{discriminator} ? 'interface' : 'type',
     name => $name,
-    fields => \%fields,
+    fields => $fields,
   };
   $spec->{description} = $refinfo->{title} if $refinfo->{title};
   $spec->{description} = $refinfo->{description}
