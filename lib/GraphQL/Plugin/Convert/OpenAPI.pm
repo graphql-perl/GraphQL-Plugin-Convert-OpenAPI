@@ -298,7 +298,7 @@ sub _kind2name2endpoint {
           $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
         ) if $kind eq 'mutation';
         ($_->{name} => {
-          type => $type,
+          type => _apply_modifier($_->{required} && 'non_null', $type),
           $_->{description} ? (description => $_->{description}) : (),
         })
       } @parameters;

@@ -110,7 +110,7 @@ input LanguageVariablesInput {
 
 type Mutation {
   # Submit a new report to CPAN Testers
-  v3_report_post(report: NewReportInput): AcceptedReports
+  v3_report_post(report: NewReportInput!): AcceptedReports
 }
 
 type NewReport {
@@ -173,19 +173,19 @@ type Query {
   # Get summary test report info about all CPAN releases
   v3_release_all: [Release]
   # Get summary test report info for releases by an author
-  v3_release_author(author: String, since: DateTime): [Release]
+  v3_release_author(author: String!, since: DateTime): [Release]
   # Get summary test report info for releases of a distribution
-  v3_release_dist(dist: String, since: DateTime): [Release]
+  v3_release_dist(dist: String!, since: DateTime): [Release]
   # Fetch report data from CPAN Testers
-  v3_report_get(id: String): Report
+  v3_report_get(id: String!): Report
   # Get test report summary info for a specific version of a distribution
-  v3_summary(dist: String, version: String): [ReportSummary]
+  v3_summary(dist: String!, version: String!): [ReportSummary]
   # Get all uploads to CPAN
   v3_upload_all(since: DateTime): [Upload]
   # Get uploads for an author
-  v3_upload_author(author: String, since: DateTime): [Upload]
+  v3_upload_author(author: String!, since: DateTime): [Upload]
   # Get uploads for a dist
-  v3_upload_dist(dist: String, since: DateTime): [Upload]
+  v3_upload_dist(dist: String!, since: DateTime): [Upload]
 }
 
 # A summary of test reports for a single CPAN release
