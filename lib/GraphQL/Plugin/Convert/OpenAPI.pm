@@ -173,7 +173,8 @@ sub _get_type {
     );
   }
   return 'DateTime'
-    if $info->{type} eq 'string' and $info->{format} eq 'date-time';
+    if ($info->{type}//'') eq 'string'
+    and ($info->{format}//'') eq 'date-time';
   DEBUG and _debug("_get_type($maybe_name) simple");
   $TYPEMAP{$info->{type}}
     // die "'$maybe_name' unknown data type: @{[$info->{type}]}\n";
