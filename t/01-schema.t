@@ -26,6 +26,13 @@ type Distribution {
   version: String!
 }
 
+input DistributionInput {
+  name: String!
+  # A list of prerequisites
+  prerequisites: [PrerequisiteInput]
+  version: String!
+}
+
 type Environment {
   language: Language!
   system: System!
@@ -33,7 +40,19 @@ type Environment {
   user_agent: String
 }
 
+input EnvironmentInput {
+  language: LanguageInput!
+  system: SystemInput!
+  toolchain: [EnvironmentToolchainInput]
+  user_agent: String
+}
+
 type EnvironmentToolchain {
+  key: String
+  value: String
+}
+
+input EnvironmentToolchainInput {
   key: String
   value: String
 }
@@ -66,6 +85,14 @@ interface Language {
   version: String!
 }
 
+input LanguageInput {
+  archname: String!
+  build: String
+  name: LanguageName!
+  variables: [LanguageVariablesInput]
+  version: String!
+}
+
 enum LanguageName {
   Perl5
   Perl6
@@ -76,9 +103,14 @@ type LanguageVariables {
   value: String
 }
 
+input LanguageVariablesInput {
+  key: String
+  value: String
+}
+
 type Mutation {
   # Submit a new report to CPAN Testers
-  v3_report_post: AcceptedReports
+  v3_report_post(report: NewReportInput): AcceptedReports
 }
 
 type NewReport {
@@ -87,6 +119,14 @@ type NewReport {
   environment: Environment!
   reporter: Reporter!
   result: Result!
+}
+
+input NewReportInput {
+  comments: String
+  distribution: DistributionInput!
+  environment: EnvironmentInput!
+  reporter: ReporterInput!
+  result: ResultInput!
 }
 
 # Language data for Perl 5 reports
@@ -116,6 +156,13 @@ type Perl6Backend {
 }
 
 type Prerequisite {
+  have: String
+  name: String!
+  need: String!
+  phase: String!
+}
+
+input PrerequisiteInput {
   have: String
   name: String!
   need: String!
@@ -198,6 +245,11 @@ type Reporter {
   name: String
 }
 
+input ReporterInput {
+  email: String!
+  name: String
+}
+
 type Result {
   duration: Int
   failures: Int
@@ -209,7 +261,23 @@ type Result {
   warnings: Int
 }
 
+input ResultInput {
+  duration: Int
+  failures: Int
+  grade: Grade!
+  output: TestOutputInput!
+  skipped: Int
+  tests: Int
+  todo: ResultTodoInput
+  warnings: Int
+}
+
 type ResultTodo {
+  fail: Int!
+  pass: Int!
+}
+
+input ResultTodoInput {
   fail: Int!
   pass: Int!
 }
@@ -225,13 +293,38 @@ type System {
   variables: [SystemVariables]
 }
 
+input SystemInput {
+  cpu_count: String
+  cpu_description: String
+  cpu_type: String
+  filesystem: String
+  hostname: String
+  osname: String!
+  osversion: String
+  variables: [SystemVariablesInput]
+}
+
 type SystemVariables {
+  key: String
+  value: String
+}
+
+input SystemVariablesInput {
   key: String
   value: String
 }
 
 # At least one of the properties must be set
 type TestOutput {
+  build: String
+  configure: String
+  install: String
+  test: String
+  uncategorized: String
+}
+
+# At least one of the properties must be set
+input TestOutputInput {
   build: String
   configure: String
   install: String

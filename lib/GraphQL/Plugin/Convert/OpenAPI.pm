@@ -276,6 +276,48 @@ sub _make_union {
   $typename;
 }
 
+sub _make_input {
+  my ($type, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  DEBUG and _debug("_make_input", $type);
+  if (ref $type eq 'ARRAY') {
+    # modifiers, recurse
+    return _apply_modifier(
+      $type->[0],
+      _make_input(
+        $type->[1],
+        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      ),
+    )
+  }
+  $type = $type->{type} if ref $type eq 'HASH';
+  return $type
+    if $TYPE2SCALAR{$type}
+    or $name2type->{$type}{kind} eq 'enum'
+    or $name2type->{$type}{kind} eq 'input';
+  # not deal with unions for now
+  # is an output "type"
+  my $input_name = $type.'Input';
+  my $typedef = $name2type->{$type};
+  DEBUG and _debug("_make_input(object)", $name2type, $typedef);
+  $name2type->{$input_name} ||= {
+    name => $input_name,
+    kind => 'input',
+    $typedef->{description} ? (description => $typedef->{description}) : (),
+    fields => +{
+      map {
+        my $fielddef = $typedef->{fields}{$_};
+        ($_ => +{
+          %$fielddef, type => _make_input(
+            $fielddef->{type},
+            $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+          ),
+        })
+      } keys %{$typedef->{fields}}
+    },
+  };
+  $input_name;
+}
+
 sub _resolve_schema_ref {
   my ($obj, $schema) = @_;
   my $ref = $obj->{'$ref'};
@@ -307,11 +349,16 @@ sub _kind2name2endpoint {
       my @parameters = map _resolve_schema_ref($_, $schema),
         @{ $info->{parameters} };
       my %args = map {
+        my $type = _get_type(
+          $_->{schema} ? $_->{schema} : $_, "${op_id}_$_->{name}",
+          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        );
+        $type = _make_input(
+          $type,
+          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        ) if $kind eq 'mutation';
         ($_->{name} => {
-          type => _get_type(
-            $_->{schema} ? $_->{schema} : $_, "${op_id}_$_->{name}",
-            $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
-          ),
+          type => $type,
           $_->{description} ? (description => $_->{description}) : (),
         })
       } @parameters;
@@ -320,7 +367,7 @@ sub _kind2name2endpoint {
       $kind2name2endpoint{$kind}->{$op_id} = +{
         type => $union,
         $description ? (description => $description) : (),
-        $kind eq 'query' && %args ? (args => \%args) : (),
+        %args ? (args => \%args) : (),
       };
     }
   }
