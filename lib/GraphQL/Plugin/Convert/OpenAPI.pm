@@ -55,13 +55,6 @@ sub field_resolver {
   return $rs;
 }
 
-sub _subfieldrels {
-  my ($name, $name2rel21, $field_nodes) = @_;
-  grep $name2rel21->{$name}->{$_},
-    map $_->{name}, grep $_->{kind} eq 'field', map @{$_->{selections}},
-    grep $_->{kind} eq 'field', @$field_nodes;
-}
-
 sub _trim_name {
   my ($name) = @_;
   $name =~ s#[^a-zA-Z0-9_]##g;
@@ -69,7 +62,7 @@ sub _trim_name {
 }
 
 sub _get_type {
-  my ($info, $maybe_name, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my ($info, $maybe_name, $name2type) = @_;
   DEBUG and _debug("_get_type($maybe_name)", $info);
   return 'String' if !%$info; # bodge but unavoidable
   if ($info->{'$ref'}) {
@@ -92,14 +85,14 @@ sub _get_type {
         },
       },
       $maybe_name,
-      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      $name2type,
     );
   }
   if ($info->{properties} or $info->{allOf} or $info->{enum}) {
     DEBUG and _debug("_get_type($maybe_name) p");
     return _get_spec_from_info(
       $maybe_name, $info,
-      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      $name2type,
     );
   }
   if ($info->{type} eq 'array') {
@@ -108,7 +101,7 @@ sub _get_type {
       'list',
       _get_type(
         $info->{items}, $maybe_name,
-        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        $name2type,
       )
     );
   }
@@ -121,7 +114,7 @@ sub _get_type {
 }
 
 sub _refinfo2fields {
-  my ($name, $refinfo, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my ($name, $refinfo, $name2type) = @_;
   my %fields;
   my $properties = $refinfo->{properties};
   my %required = map { ($_ => 1) } @{$refinfo->{required}};
@@ -130,9 +123,8 @@ sub _refinfo2fields {
     DEBUG and _debug("_refinfo2fields($name) $prop", $info);
     my $rawtype = _get_type(
       $info, $name.ucfirst($prop),
-      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      $name2type,
     );
-    $name2prop2rawtype->{$name}{$prop} = $rawtype;
     my $fulltype = _apply_modifier(
       $required{$prop} && 'non_null',
       $rawtype,
@@ -140,8 +132,6 @@ sub _refinfo2fields {
     $fields{$prop} = +{ type => $fulltype };
     $fields{$prop}->{description} = $info->{description}
       if $info->{description};
-    $name2fk21->{$name}{$prop} = 1 if $info->{is_foreign_key};
-    $name2prop21->{$name}{$prop} = 1;
   }
   \%fields;
 }
@@ -149,7 +139,7 @@ sub _refinfo2fields {
 sub _get_spec_from_info {
   my (
     $name, $refinfo,
-    $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+    $name2type,
   ) = @_;
   DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
   my %implements;
@@ -166,7 +156,7 @@ sub _get_spec_from_info {
       } else {
         %$fields = (%$fields, %{_refinfo2fields(
           $name, $schema,
-          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+          $name2type,
         )});
       }
     }
@@ -185,7 +175,7 @@ sub _get_spec_from_info {
   } else {
     %$fields = (%$fields, %{_refinfo2fields(
       $name, $refinfo,
-      $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+      $name2type,
     )});
   }
   my $spec = +{
@@ -202,7 +192,7 @@ sub _get_spec_from_info {
 }
 
 sub _make_union {
-  my ($types, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my ($types, $name2type) = @_;
   my %seen;
   my $types2 = [ sort grep !$seen{$_}++, map _remove_modifiers($_), @$types ];
   return $types->[0] if @$types == 1; # no need for a union
@@ -217,7 +207,7 @@ sub _make_union {
 }
 
 sub _make_input {
-  my ($type, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my ($type, $name2type) = @_;
   DEBUG and _debug("_make_input", $type);
   if (ref $type eq 'ARRAY') {
     # modifiers, recurse
@@ -225,7 +215,7 @@ sub _make_input {
       $type->[0],
       _make_input(
         $type->[1],
-        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        $name2type,
       ),
     )
   }
@@ -249,7 +239,7 @@ sub _make_input {
         ($_ => +{
           %$fielddef, type => _make_input(
             $fielddef->{type},
-            $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+            $name2type,
           ),
         })
       } keys %{$typedef->{fields}}
@@ -267,7 +257,7 @@ sub _resolve_schema_ref {
 }
 
 sub _kind2name2endpoint {
-  my ($paths, $schema, $name2type, $name2prop2rawtype, $name2fk21, $name2prop21) = @_;
+  my ($paths, $schema, $name2type) = @_;
   my %kind2name2endpoint;
   for my $path (keys %$paths) {
     for my $method (grep $paths->{$path}{$_}, @METHODS) {
@@ -280,22 +270,22 @@ sub _kind2name2endpoint {
       DEBUG and _debug("_kind2name2endpoint($path)($method)($op_id)", $info->{responses}, \@successresponses);
       my @responsetypes = map _get_type(
         $_->{schema}, 'param',
-        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        $name2type,
       ), @successresponses;
       my $union = _make_union(
         \@responsetypes,
-        $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+        $name2type,
       );
       my @parameters = map _resolve_schema_ref($_, $schema),
         @{ $info->{parameters} };
       my %args = map {
         my $type = _get_type(
           $_->{schema} ? $_->{schema} : $_, "${op_id}_$_->{name}",
-          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+          $name2type,
         );
         $type = _make_input(
           $type,
-          $name2type, $name2prop2rawtype, $name2fk21, $name2prop21,
+          $name2type,
         ) if $kind eq 'mutation';
         ($_->{name} => {
           type => _apply_modifier($_->{required} && 'non_null', $type),
@@ -322,40 +312,27 @@ sub to_graphql {
   my %root_value;
   my @ast;
   my (
-    %name2type, %name2prop21, %name2pk21, %name2fk21, %name2rel21,
-    %name2prop2rawtype,
+    %name2type,
   );
   # all non-interface-consumers first
   for my $name (grep !$defs->{$_}{allOf}, keys %$defs) {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
-      \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+      \%name2type,
     );
   }
   # now interface-consumers and can now put in interface fields too
   for my $name (grep $defs->{$_}{allOf}, keys %$defs) {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
-      \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+      \%name2type,
     );
   }
   my $kind2name2endpoint = _kind2name2endpoint(
     $openapi_schema->get("/paths"), $openapi_schema,
-    \%name2type, \%name2prop2rawtype, \%name2fk21, \%name2prop21,
+    \%name2type,
   );
   push @ast, values %name2type;
-#  push @ast, map _type2createinput(
-#    $_, $name2type{$_}->{fields}, \%name2pk21, $name2fk21{$_},
-#    $name2prop21{$_}, \%name2type,
-#  ), keys %name2type;
-#  push @ast, map _type2searchinput(
-#    $_, $name2prop2rawtype{$_}, \%name2pk21,
-#    $name2prop21{$_}, \%name2type,
-#  ), keys %name2type;
-#  push @ast, map _type2mutateinput(
-#    $_, $name2prop2rawtype{$_}, $name2type{$_}->{fields}, \%name2pk21,
-#    $name2prop21{$_},
-#  ), keys %name2type;
   push @ast, {
     kind => 'type',
     name => 'Query',
@@ -364,14 +341,10 @@ sub to_graphql {
         my $name = $_;
         $root_value{$name} = sub {
           my ($args, $context, $info) = @_;
-          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
+          DEBUG and _debug('OpenAPI.root_value', );
           [
             $dbic_schema_cb->()->resultset($name)->search(
               +{ map { ("me.$_" => $args->{$_}) } keys %$args },
-              {
-                prefetch => \@subfieldrels,
-              },
             )
           ];
         };
@@ -389,14 +362,9 @@ sub to_graphql {
         my $name = $_;
         $root_value{$name} = sub {
           my ($args, $context, $info) = @_;
-          my @subfieldrels = _subfieldrels($name, \%name2rel21, $info->{field_nodes});
-          DEBUG and _debug('OpenAPI.root_value', @subfieldrels);
           [
             $dbic_schema_cb->()->resultset($name)->search(
               +{ map { ("me.$_" => $args->{$_}) } keys %$args },
-              {
-                prefetch => \@subfieldrels,
-              },
             )
           ];
         };
