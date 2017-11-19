@@ -37,61 +37,6 @@ sub _remove_modifiers {
   _remove_modifiers($typespec->[1]);
 }
 
-sub _type2createinput {
-  my ($name, $fields, $name2pk21, $fk21, $prop21, $name2type) = @_;
-  +{
-    kind => 'input',
-    name => "${name}CreateInput",
-    fields => {
-      (map { ($_ => $fields->{$_}) }
-        grep !$name2pk21->{$name}{$_} && !$fk21->{$_}, keys %$prop21),
-      _make_fk_fields($name, $fk21, $name2type, $name2pk21),
-    },
-  };
-}
-
-sub _type2searchinput {
-  my ($name, $prop2rawtype, $name2pk21, $prop21, $name2type) = @_;
-  +{
-    kind => 'input',
-    name => "${name}SearchInput",
-    fields => {
-      (map { ($_ => { type => $prop2rawtype->{$_} }) }
-        grep !$name2pk21->{$name}{$_}, keys %$prop21),
-    },
-  };
-}
-
-sub _type2mutateinput {
-  my ($name, $prop2rawtype, $fields, $name2pk21, $prop21) = @_;
-  +{
-    kind => 'input',
-    name => "${name}MutateInput",
-    fields => {
-      (map { ($_ => { type => $prop2rawtype->{$_} }) }
-        grep !$name2pk21->{$name}{$_}, keys %$prop21),
-      (map { ($_ => $fields->{$_}) }
-        grep $name2pk21->{$name}{$_}, keys %$prop21),
-    },
-  };
-}
-
-sub _make_fk_fields {
-  my ($name, $fk21, $name2type, $name2pk21) = @_;
-  my $type = $name2type->{$name};
-  (map {
-    my $field_type = $type->{fields}{$_}{type};
-    if (!$TYPE2SCALAR{_remove_modifiers($field_type)}) {
-      my $non_null =
-        ref($field_type) eq 'ARRAY' && $field_type->[0] eq 'non_null';
-      $field_type = _apply_modifier(
-        $non_null && 'non_null', _remove_modifiers($field_type)."MutateInput"
-      );
-    }
-    ($_ => { type => $field_type })
-  } keys %$fk21);
-}
-
 sub field_resolver {
   my ($root_value, $args, $context, $info) = @_;
   my $field_name = $info->{field_name};
@@ -115,11 +60,6 @@ sub _subfieldrels {
   grep $name2rel21->{$name}->{$_},
     map $_->{name}, grep $_->{kind} eq 'field', map @{$_->{selections}},
     grep $_->{kind} eq 'field', @$field_nodes;
-}
-
-sub _make_update_arg {
-  my ($name, $pk21, $input) = @_;
-  +{ map { $_ => $input->{$_} } grep !$pk21->{$_}, keys %$input };
 }
 
 sub _trim_name {
