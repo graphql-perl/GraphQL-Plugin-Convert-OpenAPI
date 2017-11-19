@@ -17,7 +17,7 @@ my %TYPEMAP = (
   number => 'Float',
   boolean => 'Boolean',
 );
-my %TYPE2SCALAR = map { ($_ => 1) } qw(ID String Int Float Boolean);
+my %TYPE2SCALAR = map { ($_ => 1) } qw(ID String Int Float Boolean DateTime);
 my %METHOD2MUTATION = map { ($_ => 1) } qw(post put patch delete);
 my @METHODS = (keys %METHOD2MUTATION, qw(get options head));
 
