@@ -6,7 +6,7 @@ use GraphQL::Schema;
 use GraphQL::Debug qw(_debug);
 use JSON::Validator::OpenAPI;
 
-our $VERSION = "0.03";
+our $VERSION = "0.01";
 use constant DEBUG => $ENV{GRAPHQL_DEBUG};
 my $validator = JSON::Validator::OpenAPI->new; # singleton
 
