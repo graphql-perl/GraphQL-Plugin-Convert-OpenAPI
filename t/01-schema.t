@@ -223,6 +223,7 @@ type ReportSummary {
   date: String
   # The name of the distribution tested
   dist: String
+  # The report grade. Pass is passing tests. Fail is failing tests. NA is the distribution cannot be used on the system. Unknown is any other problem.
   grade: Grade
   # The GUID of the full report this data came from
   guid: String
@@ -253,7 +254,9 @@ input ReporterInput {
 type Result {
   duration: Int
   failures: Int
+  # The report grade. Pass is passing tests. Fail is failing tests. NA is the distribution cannot be used on the system. Unknown is any other problem.
   grade: Grade!
+  # At least one of the properties must be set
   output: TestOutput!
   skipped: Int
   tests: Int
@@ -264,7 +267,9 @@ type Result {
 input ResultInput {
   duration: Int
   failures: Int
+  # The report grade. Pass is passing tests. Fail is failing tests. NA is the distribution cannot be used on the system. Unknown is any other problem.
   grade: Grade!
+  # At least one of the properties must be set
   output: TestOutputInput!
   skipped: Int
   tests: Int
