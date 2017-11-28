@@ -13,9 +13,8 @@ GraphQL::Plugin::Convert::OpenAPI - convert OpenAPI schema to GraphQL schema
 # SYNOPSIS
 
     use GraphQL::Plugin::Convert::OpenAPI;
-    use Schema;
     my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
-      sub { Schema->connect }
+      'file-containing-spec.json',
     );
     print $converted->{schema}->to_doc;
 
