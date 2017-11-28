@@ -136,6 +136,19 @@ sub _refinfo2fields {
   \%fields;
 }
 
+sub _merge_fields {
+  my ($f1, $f2) = @_;
+  my %merged = %$f1;
+  for my $k (keys %$f2) {
+    if (exists $merged{$k}) {
+      $merged{$k} = $f2->{$k} if ref $f2->{$k}{type}; # ie modified ie non-null
+    } else {
+      $merged{$k} = $f2->{$k};
+    }
+  }
+  \%merged;
+}
+
 sub _get_spec_from_info {
   my (
     $name, $refinfo,
@@ -152,12 +165,12 @@ sub _get_spec_from_info {
         my $othertypedef = $name2type->{$othertype};
         push @{$implements{interfaces}}, $othertype
           if $othertypedef->{kind} eq 'interface';
-        %$fields = (%$fields, %{$othertypedef->{fields}});
+        $fields = _merge_fields($fields, $othertypedef->{fields});
       } else {
-        %$fields = (%$fields, %{_refinfo2fields(
+        $fields = _merge_fields($fields, _refinfo2fields(
           $name, $schema,
           $name2type,
-        )});
+        ));
       }
     }
   } elsif (my $values = $refinfo->{enum}) {
