@@ -15,11 +15,11 @@ WriteMakefile(
   },
   TEST_REQUIRES => {
     'Test::More' => '0.98',
-    'JSON::Validator' => '1.06',
+    'JSON::Validator' => '1.07',
     'GraphQL' => '0.21', # DateTime scalar type
   },
   PREREQ_PM => {
-    'JSON::Validator' => '1.06',
+    'JSON::Validator' => '1.07',
     'GraphQL' => '0.21', # DateTime scalar type
   },
   clean => { FILES => 'GraphQL-Plugin-Convert-OpenAPI-*' },
