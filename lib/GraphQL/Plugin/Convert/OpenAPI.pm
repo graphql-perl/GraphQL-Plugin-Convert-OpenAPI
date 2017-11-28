@@ -9,7 +9,6 @@ use OpenAPI::Client;
 
 our $VERSION = "0.01";
 use constant DEBUG => $ENV{GRAPHQL_DEBUG};
-my $validator = JSON::Validator::OpenAPI->new; # singleton
 
 my %TYPEMAP = (
   string => 'String',
@@ -307,7 +306,7 @@ sub _kind2name2endpoint {
 
 sub to_graphql {
   my ($class, $spec) = @_;
-  my $openapi_schema = $validator->schema($spec)->schema;
+  my $openapi_schema = JSON::Validator::OpenAPI->new->schema($spec)->schema;
   my $defs = $openapi_schema->get("/definitions");
   my @ast;
   my (
