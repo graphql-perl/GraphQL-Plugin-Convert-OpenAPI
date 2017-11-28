@@ -32,12 +32,15 @@ input parameter
 - the given operations as fields of either `Query` if a `GET`,
 or `Mutation` otherwise
 
-The queries will be run against the spec's server.
+The queries will be run against the spec's server.  If the spec starts
+with a `/`, and a [Mojolicious](https://metacpan.org/pod/Mojolicious) app is supplied (see below), that
+server will instead be the given app.
 
 # ARGUMENTS
 
 To the `to_graphql` method: a URL to a specification, or a filename
-containing a JSON specification, of an OpenAPI v2.
+containing a JSON specification, of an OpenAPI v2. Optionally, a
+[Mojolicious](https://metacpan.org/pod/Mojolicious) app can be given as the second argument.
 
 # PACKAGE FUNCTIONS
 

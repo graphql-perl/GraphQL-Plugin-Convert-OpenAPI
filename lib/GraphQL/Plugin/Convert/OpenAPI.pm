@@ -305,8 +305,11 @@ sub _kind2name2endpoint {
 }
 
 sub to_graphql {
-  my ($class, $spec) = @_;
-  my $openapi_schema = JSON::Validator::OpenAPI->new->schema($spec)->schema;
+  my ($class, $spec, $app) = @_;
+  my %appargs = (app => $app) if $app;
+  my $openapi_schema = JSON::Validator::OpenAPI->new(
+    %appargs
+  )->schema($spec)->schema;
   my $defs = $openapi_schema->get("/definitions");
   my @ast;
   my (
@@ -357,7 +360,7 @@ sub to_graphql {
   };
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
-    root_value => OpenAPI::Client->new($spec),
+    root_value => OpenAPI::Client->new($spec, %appargs),
     resolver => \&field_resolver,
   };
 }
@@ -408,12 +411,15 @@ or C<Mutation> otherwise
 
 =back
 
-The queries will be run against the spec's server.
+The queries will be run against the spec's server.  If the spec starts
+with a C</>, and a L<Mojolicious> app is supplied (see below), that
+server will instead be the given app.
 
 =head1 ARGUMENTS
 
 To the C<to_graphql> method: a URL to a specification, or a filename
-containing a JSON specification, of an OpenAPI v2.
+containing a JSON specification, of an OpenAPI v2. Optionally, a
+L<Mojolicious> app can be given as the second argument.
 
 =head1 PACKAGE FUNCTIONS
 
