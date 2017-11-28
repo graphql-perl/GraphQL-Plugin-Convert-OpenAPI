@@ -5,6 +5,7 @@ use warnings;
 use GraphQL::Schema;
 use GraphQL::Debug qw(_debug);
 use JSON::Validator::OpenAPI;
+use OpenAPI::Client;
 
 our $VERSION = "0.01";
 use constant DEBUG => $ENV{GRAPHQL_DEBUG};
@@ -48,11 +49,11 @@ sub field_resolver {
   return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
     if ref $root_value eq 'HASH' or !$root_value->can($field_name);
   return $root_value->$field_name($args, $context, $info)
-    if !UNIVERSAL::isa($root_value, 'DBIx::Class::Core');
-  # dbic search
-  my $rs = $root_value->$field_name;
-  $rs = [ $rs->all ] if $info->{return_type}->isa('GraphQL::Type::List');
-  return $rs;
+    if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
+  # call OAC method
+  my $got = $root_value->$field_name($args);
+  DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
+  $got->res->json;
 }
 
 sub _trim_name {
@@ -306,10 +307,8 @@ sub _kind2name2endpoint {
 
 sub to_graphql {
   my ($class, $spec) = @_;
-  my $dbic_schema_cb = undef;
   my $openapi_schema = $validator->schema($spec)->schema;
   my $defs = $openapi_schema->get("/definitions");
-  my %root_value;
   my @ast;
   my (
     %name2type,
@@ -339,15 +338,6 @@ sub to_graphql {
     fields => {
       map {
         my $name = $_;
-        $root_value{$name} = sub {
-          my ($args, $context, $info) = @_;
-          DEBUG and _debug('OpenAPI.root_value', );
-          [
-            $dbic_schema_cb->()->resultset($name)->search(
-              +{ map { ("me.$_" => $args->{$_}) } keys %$args },
-            )
-          ];
-        };
         (
           $name => $kind2name2endpoint->{query}{$name},
         )
@@ -360,14 +350,6 @@ sub to_graphql {
     fields => {
       map {
         my $name = $_;
-        $root_value{$name} = sub {
-          my ($args, $context, $info) = @_;
-          [
-            $dbic_schema_cb->()->resultset($name)->search(
-              +{ map { ("me.$_" => $args->{$_}) } keys %$args },
-            )
-          ];
-        };
         (
           $name => $kind2name2endpoint->{mutation}{$name},
         )
@@ -376,7 +358,7 @@ sub to_graphql {
   };
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
-    root_value => \%root_value,
+    root_value => OpenAPI::Client->new($spec),
     resolver => \&field_resolver,
   };
 }
