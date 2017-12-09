@@ -1,5 +1,10 @@
 Revision history for Perl extension GraphQL-Plugin-Convert-OpenAPI
 
+0.04	Sat  9 Dec 07:15:39 GMT 2017
+ - handle operationId with space
+ - doc fix
+ - use petstore-expanded.json as test corpus
+
 0.03	Tue Nov 28 07:52:54 GMT 2017
  - make nullable not override non-null for allOf
 
