@@ -57,6 +57,7 @@ sub field_resolver {
 
 sub _trim_name {
   my ($name) = @_;
+  return if !defined $name;
   $name =~ s#[^a-zA-Z0-9_]##g;
   $name;
 }
@@ -275,7 +276,8 @@ sub _kind2name2endpoint {
   for my $path (keys %$paths) {
     for my $method (grep $paths->{$path}{$_}, @METHODS) {
       my $info = $paths->{$path}{$method};
-      my $op_id = $info->{operationId} || $method.'_'._trim_name($path);
+      my $op_id = _trim_name($info->{operationId})
+        || $method.'_'._trim_name($path);
       my $kind = $METHOD2MUTATION{$method} ? 'mutation' : 'query';
       my @successresponses = map _resolve_schema_ref($_, $schema),
         map $info->{responses}{$_},
