@@ -65,7 +65,7 @@ sub _trim_name {
 sub _get_type {
   my ($info, $maybe_name, $name2type) = @_;
   DEBUG and _debug("_get_type($maybe_name)", $info);
-  return 'String' if !%$info; # bodge but unavoidable
+  return 'String' if !$info or !%$info; # bodge but unavoidable
   if ($info->{'$ref'}) {
     DEBUG and _debug("_get_type($maybe_name) ref");
     my $rawtype = $info->{'$ref'};

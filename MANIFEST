@@ -7,6 +7,8 @@ t/00-compile.t
 t/00-report-prereqs.t
 t/01-schema.t
 t/02-execute.t
+t/03-schema.t
 t/cpantesters-v3.json
+t/petstore-expanded.json
 xt/manifest.t
 xt/pod.t
