@@ -23,7 +23,7 @@ sub nice_dump {
 }
 
 my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
-  't/cpantesters-v3.json'
+  't/01-corpus.json'
 );
 
 subtest 'execute pk + deeper query' => sub {
