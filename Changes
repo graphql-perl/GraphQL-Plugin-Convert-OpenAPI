@@ -1,5 +1,11 @@
 Revision history for Perl extension GraphQL-Plugin-Convert-OpenAPI
 
+0.05	Sun Dec 10 23:08:40 GMT 2017
+ - no error if hash key not present
+ - handle additionProperties arbitrary hash pairs right
+ - add petstore API schema to tests
+ - use OpenAPI::Client 0.13 "call" interface
+
 0.04	Sat  9 Dec 07:15:39 GMT 2017
  - handle operationId with space
  - doc fix
