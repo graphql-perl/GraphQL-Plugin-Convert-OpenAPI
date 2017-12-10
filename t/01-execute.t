@@ -12,6 +12,7 @@ use_ok 'GraphQL::Plugin::Convert::OpenAPI';
 sub run_test {
   my ($args, $expected) = @_;
   my $got = execute(@$args);
+  #open my $fh, '>', 'tf'; print $fh nice_dump($got); # uncomment to regenerate
   is_deeply $got, $expected or diag nice_dump($got);
 }
 
@@ -25,9 +26,9 @@ sub nice_dump {
 my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
   't/01-corpus.json'
 );
+my $expected = eval join '', <DATA>;
 
-subtest 'execute pk + deeper query' => sub {
-  my $doc = <<'EOF';
+my $doc = <<'EOF';
 {
   v3_report_get(id: "a35ce723-6bf8-1014-858b-1fdf904013f2") {
     id
@@ -38,21 +39,25 @@ subtest 'execute pk + deeper query' => sub {
   }
 }
 EOF
-  run_test(
-    [
-      $converted->{schema}, $doc, $converted->{root_value},
-      (undef) x 3, $converted->{resolver},
-    ],
-    {
-      data => {
-        v3_report_get => {
-          created => '2017-11-16T13:32:21Z',
-          id => 'a35ce723-6bf8-1014-858b-1fdf904013f2',
-          reporter => { name => 'Alexandr Ciornii (CHORNY)' },
-        },
-      }
-    }
-  );
-};
+run_test(
+  [
+    $converted->{schema}, $doc, $converted->{root_value},
+    (undef) x 3, $converted->{resolver},
+  ],
+  $expected,
+);
 
 done_testing;
+
+__DATA__
+{
+  'data' => {
+    'v3_report_get' => {
+      'created' => '2017-11-16T13:32:21Z',
+      'id' => 'a35ce723-6bf8-1014-858b-1fdf904013f2',
+      'reporter' => {
+        'name' => 'Alexandr Ciornii (CHORNY)'
+      }
+    }
+  }
+}
