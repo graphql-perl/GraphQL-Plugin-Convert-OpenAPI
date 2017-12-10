@@ -39,7 +39,8 @@ sub _remove_modifiers {
 }
 
 sub make_field_resolver {
-  my ($mapping) = @_;
+  my ($mapping, $type2hashpairs) = @_;
+  DEBUG and _debug('OpenAPI.make_field_resolver', $mapping, $type2hashpairs);
   sub {
     my ($root_value, $args, $context, $info) = @_;
     my $field_name = $info->{field_name};
@@ -68,7 +69,7 @@ sub _trim_name {
 }
 
 sub _get_type {
-  my ($info, $maybe_name, $name2type) = @_;
+  my ($info, $maybe_name, $name2type, $type2hashpairs) = @_;
   DEBUG and _debug("_get_type($maybe_name)", $info);
   return 'String' if !$info or !%$info; # bodge but unavoidable
   if ($info->{'$ref'}) {
@@ -78,8 +79,7 @@ sub _get_type {
     return $rawtype;
   }
   if ($info->{additionalProperties}) {
-    DEBUG and _debug("_get_type($maybe_name) aP");
-    return _get_type(
+    my $type = _get_type(
       {
         type => 'array',
         items => {
@@ -92,13 +92,18 @@ sub _get_type {
       },
       $maybe_name,
       $name2type,
+      $type2hashpairs,
     );
+    DEBUG and _debug("_get_type($maybe_name) aP", $type);
+    $type2hashpairs->{$maybe_name} = 1;
+    return $type;
   }
   if ($info->{properties} or $info->{allOf} or $info->{enum}) {
     DEBUG and _debug("_get_type($maybe_name) p");
     return _get_spec_from_info(
       $maybe_name, $info,
       $name2type,
+      $type2hashpairs,
     );
   }
   if ($info->{type} eq 'array') {
@@ -108,6 +113,7 @@ sub _get_type {
       _get_type(
         $info->{items}, $maybe_name,
         $name2type,
+        $type2hashpairs,
       )
     );
   }
@@ -120,7 +126,7 @@ sub _get_type {
 }
 
 sub _refinfo2fields {
-  my ($name, $refinfo, $name2type) = @_;
+  my ($name, $refinfo, $name2type, $type2hashpairs) = @_;
   my %fields;
   my $properties = $refinfo->{properties};
   my %required = map { ($_ => 1) } @{$refinfo->{required}};
@@ -130,6 +136,7 @@ sub _refinfo2fields {
     my $rawtype = _get_type(
       $info, $name.ucfirst($prop),
       $name2type,
+      $type2hashpairs,
     );
     my $fulltype = _apply_modifier(
       $required{$prop} && 'non_null',
@@ -159,6 +166,7 @@ sub _get_spec_from_info {
   my (
     $name, $refinfo,
     $name2type,
+    $type2hashpairs,
   ) = @_;
   DEBUG and _debug("_get_spec_from_info($name)", $refinfo);
   my %implements;
@@ -167,7 +175,7 @@ sub _get_spec_from_info {
     for my $schema (@{$refinfo->{allOf}}) {
       DEBUG and _debug("_get_spec_from_info($name)(allOf)", $schema);
       if ($schema->{'$ref'}) {
-        my $othertype = _get_type($schema, '$ref');
+        my $othertype = _get_type($schema, '$ref', $name2type, $type2hashpairs);
         my $othertypedef = $name2type->{$othertype};
         push @{$implements{interfaces}}, $othertype
           if $othertypedef->{kind} eq 'interface';
@@ -176,6 +184,7 @@ sub _get_spec_from_info {
         $fields = _merge_fields($fields, _refinfo2fields(
           $name, $schema,
           $name2type,
+          $type2hashpairs,
         ));
       }
     }
@@ -195,6 +204,7 @@ sub _get_spec_from_info {
     %$fields = (%$fields, %{_refinfo2fields(
       $name, $refinfo,
       $name2type,
+      $type2hashpairs,
     )});
   }
   my $spec = +{
@@ -276,7 +286,7 @@ sub _resolve_schema_ref {
 }
 
 sub _kind2name2endpoint {
-  my ($paths, $schema, $name2type) = @_;
+  my ($paths, $schema, $name2type, $type2hashpairs) = @_;
   my (%kind2name2endpoint, %field2operationId);
   for my $path (keys %$paths) {
     for my $method (grep $paths->{$path}{$_}, @METHODS) {
@@ -292,6 +302,7 @@ sub _kind2name2endpoint {
       my @responsetypes = map _get_type(
         $_->{schema}, $fieldname.'Return',
         $name2type,
+        $type2hashpairs,
       ), @successresponses;
       @responsetypes = ('String') if !@responsetypes; # void return
       my $union = _make_union(
@@ -304,6 +315,7 @@ sub _kind2name2endpoint {
         my $type = _get_type(
           $_->{schema} ? $_->{schema} : $_, "${fieldname}_$_->{name}",
           $name2type,
+          $type2hashpairs,
         );
         $type = _make_input(
           $type,
@@ -336,12 +348,14 @@ sub to_graphql {
   my @ast;
   my (
     %name2type,
+    %type2hashpairs,
   );
   # all non-interface-consumers first
   for my $name (grep !$defs->{$_}{allOf}, keys %$defs) {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
       \%name2type,
+      \%type2hashpairs,
     );
   }
   # now interface-consumers and can now put in interface fields too
@@ -349,11 +363,13 @@ sub to_graphql {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
       \%name2type,
+      \%type2hashpairs,
     );
   }
   my ($kind2name2endpoint, $field2operationId) = _kind2name2endpoint(
     $openapi_schema->get("/paths"), $openapi_schema,
     \%name2type,
+    \%type2hashpairs,
   );
   push @ast, values %name2type;
   push @ast, {
@@ -383,7 +399,7 @@ sub to_graphql {
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => OpenAPI::Client->new($spec, %appargs),
-    resolver => make_field_resolver($field2operationId),
+    resolver => make_field_resolver($field2operationId, \%type2hashpairs),
   };
 }
 
