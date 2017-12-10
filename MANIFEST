@@ -10,7 +10,7 @@ t/01-execute.t
 t/01-schema.t
 t/03-corpus.json
 t/03-schema.t
+t/04-corpus.json
 t/04-schema.t
-t/swagger.json
 xt/manifest.t
 xt/pod.t
