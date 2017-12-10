@@ -61,7 +61,7 @@ __DATA__
     'v3_report_get' => {
       'created' => '2017-11-16T13:32:21Z',
       'environment' => {
-        'toolchain' => undef
+        'toolchain' => []
       },
       'id' => 'a35ce723-6bf8-1014-858b-1fdf904013f2',
       'reporter' => {

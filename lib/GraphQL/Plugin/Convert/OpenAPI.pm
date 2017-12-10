@@ -48,16 +48,28 @@ sub make_field_resolver {
     my $property = ref($root_value) eq 'HASH'
       ? $root_value->{$field_name}
       : $root_value;
-    return $property->($args, $context, $info) if ref $property eq 'CODE';
-    return $property if ref $root_value eq 'HASH';
-    return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
-      if !$root_value->can($field_name);
-    return $root_value->$field_name($args, $context, $info)
-      if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
-    # call OAC method
-    my $got = $root_value->call($mapping->{$field_name} => $args);
-    DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
-    $got->res->json;
+    my $result = eval {
+      return $property->($args, $context, $info) if ref $property eq 'CODE';
+      return $property if ref $root_value eq 'HASH';
+      return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
+        if !$root_value->can($field_name);
+      return $root_value->$field_name($args, $context, $info)
+        if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
+      # call OAC method
+      my $got = $root_value->call($mapping->{$field_name} => $args);
+      DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
+      $got->res->json;
+    };
+    die $@ if $@;
+    my $return_type = $info->{return_type};
+    $return_type = $return_type->of while $return_type->can('of');
+    if ($type2hashpairs->{$return_type->to_string}) {
+      $result = [ map {
+        +{ key => $_, value => $result->{$_} }
+      } sort keys %{$result || {}} ];
+    }
+    DEBUG and _debug('OpenAPI.resolver(rettype)', $return_type->to_string, $result);
+    $result;
   };
 }
 
