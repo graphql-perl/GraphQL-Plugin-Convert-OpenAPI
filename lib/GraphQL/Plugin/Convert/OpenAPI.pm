@@ -289,7 +289,7 @@ sub _kind2name2endpoint {
         grep /^2/, keys %{$info->{responses}};
       DEBUG and _debug("_kind2name2endpoint($path)($method)($fieldname)($op_id)", $info->{responses}, \@successresponses);
       my @responsetypes = map _get_type(
-        $_->{schema}, 'param',
+        $_->{schema}, $fieldname.'Return',
         $name2type,
       ), @successresponses;
       @responsetypes = ('String') if !@responsetypes; # void return

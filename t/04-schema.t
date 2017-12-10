@@ -117,7 +117,7 @@ type Query {
   # Finds Pets by tags
   findPetsByTags(tags: [String]!): [Pet]
   # Returns pet inventories by status
-  getInventory: [param]
+  getInventory: [getInventoryReturn]
   # Find purchase order by ID
   getOrderById(orderId: Int!): Order
   # Find pet by ID
@@ -170,7 +170,7 @@ enum findPetsByStatus_status {
   sold
 }
 
-type param {
+type getInventoryReturn {
   key: String
   value: Int
 }
