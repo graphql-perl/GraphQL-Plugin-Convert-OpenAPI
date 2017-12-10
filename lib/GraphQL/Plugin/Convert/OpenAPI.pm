@@ -37,22 +37,25 @@ sub _remove_modifiers {
   _remove_modifiers($typespec->[1]);
 }
 
-sub field_resolver {
-  my ($root_value, $args, $context, $info) = @_;
-  my $field_name = $info->{field_name};
-  DEBUG and _debug('OpenAPI.resolver', $root_value, $field_name, $args);
-  my $property = ref($root_value) eq 'HASH'
-    ? $root_value->{$field_name}
-    : $root_value;
-  return $property->($args, $context, $info) if ref $property eq 'CODE';
-  return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
-    if ref $root_value eq 'HASH' or !$root_value->can($field_name);
-  return $root_value->$field_name($args, $context, $info)
-    if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
-  # call OAC method
-  my $got = $root_value->$field_name($args);
-  DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
-  $got->res->json;
+sub make_field_resolver {
+  my ($mapping) = @_;
+  sub {
+    my ($root_value, $args, $context, $info) = @_;
+    my $field_name = $info->{field_name};
+    DEBUG and _debug('OpenAPI.resolver', $root_value, $field_name, $args);
+    my $property = ref($root_value) eq 'HASH'
+      ? $root_value->{$field_name}
+      : $root_value;
+    return $property->($args, $context, $info) if ref $property eq 'CODE';
+    return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
+      if ref $root_value eq 'HASH' or !$root_value->can($field_name);
+    return $root_value->$field_name($args, $context, $info)
+      if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
+    # call OAC method
+    my $got = $root_value->call($mapping->{$field_name} => $args);
+    DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
+    $got->res->json;
+  };
 }
 
 sub _trim_name {
@@ -272,17 +275,18 @@ sub _resolve_schema_ref {
 
 sub _kind2name2endpoint {
   my ($paths, $schema, $name2type) = @_;
-  my %kind2name2endpoint;
+  my (%kind2name2endpoint, %field2operationId);
   for my $path (keys %$paths) {
     for my $method (grep $paths->{$path}{$_}, @METHODS) {
       my $info = $paths->{$path}{$method};
-      my $op_id = _trim_name($info->{operationId})
-        || $method.'_'._trim_name($path);
+      my $op_id = $info->{operationId} || $method.'_'._trim_name($path);
+      my $fieldname = _trim_name($op_id);
+      $field2operationId{$fieldname} = $op_id;
       my $kind = $METHOD2MUTATION{$method} ? 'mutation' : 'query';
       my @successresponses = map _resolve_schema_ref($_, $schema),
         map $info->{responses}{$_},
         grep /^2/, keys %{$info->{responses}};
-      DEBUG and _debug("_kind2name2endpoint($path)($method)($op_id)", $info->{responses}, \@successresponses);
+      DEBUG and _debug("_kind2name2endpoint($path)($method)($fieldname)($op_id)", $info->{responses}, \@successresponses);
       my @responsetypes = map _get_type(
         $_->{schema}, 'param',
         $name2type,
@@ -295,7 +299,7 @@ sub _kind2name2endpoint {
         @{ $info->{parameters} };
       my %args = map {
         my $type = _get_type(
-          $_->{schema} ? $_->{schema} : $_, "${op_id}_$_->{name}",
+          $_->{schema} ? $_->{schema} : $_, "${fieldname}_$_->{name}",
           $name2type,
         );
         $type = _make_input(
@@ -307,16 +311,16 @@ sub _kind2name2endpoint {
           $_->{description} ? (description => $_->{description}) : (),
         })
       } @parameters;
-      DEBUG and _debug("_kind2name2endpoint($op_id) params", \%args);
+      DEBUG and _debug("_kind2name2endpoint($fieldname) params", \%args);
       my $description = $info->{summary} || $info->{description};
-      $kind2name2endpoint{$kind}->{$op_id} = +{
+      $kind2name2endpoint{$kind}->{$fieldname} = +{
         type => $union,
         $description ? (description => $description) : (),
         %args ? (args => \%args) : (),
       };
     }
   }
-  \%kind2name2endpoint;
+  (\%kind2name2endpoint, \%field2operationId);
 }
 
 sub to_graphql {
@@ -344,7 +348,7 @@ sub to_graphql {
       \%name2type,
     );
   }
-  my $kind2name2endpoint = _kind2name2endpoint(
+  my ($kind2name2endpoint, $field2operationId) = _kind2name2endpoint(
     $openapi_schema->get("/paths"), $openapi_schema,
     \%name2type,
   );
@@ -376,7 +380,7 @@ sub to_graphql {
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => OpenAPI::Client->new($spec, %appargs),
-    resolver => \&field_resolver,
+    resolver => make_field_resolver($field2operationId),
   };
 }
 
@@ -437,11 +441,13 @@ L<Mojolicious> app can be given as the second argument.
 
 =head1 PACKAGE FUNCTIONS
 
-=head2 field_resolver
+=head2 make_field_resolver
 
-This is available as C<\&GraphQL::Plugin::Convert::OpenAPI::field_resolver>
+This is available as C<\&GraphQL::Plugin::Convert::OpenAPI::make_field_resolver>
 in case it is wanted for use outside of the "bundle" of the C<to_graphql>
-method.
+method. It takes one argument, a hash-ref mapping from a GraphQL operation
+field-name to an C<operationId>, and returns a closure that can be used
+as a field resolver.
 
 =head1 DEBUGGING
 
