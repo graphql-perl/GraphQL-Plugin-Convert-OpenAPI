@@ -223,6 +223,7 @@ sub _make_union {
 sub _make_input {
   my ($type, $name2type) = @_;
   DEBUG and _debug("_make_input", $type);
+  $type = $type->{type} if ref $type eq 'HASH';
   if (ref $type eq 'ARRAY') {
     # modifiers, recurse
     return _apply_modifier(
@@ -233,7 +234,6 @@ sub _make_input {
       ),
     )
   }
-  $type = $type->{type} if ref $type eq 'HASH';
   return $type
     if $TYPE2SCALAR{$type}
     or $name2type->{$type}{kind} eq 'enum'
