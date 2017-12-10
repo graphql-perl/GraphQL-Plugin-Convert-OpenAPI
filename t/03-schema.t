@@ -5,7 +5,7 @@ use_ok 'GraphQL::Plugin::Convert::OpenAPI';
 
 my $expected = join '', <DATA>;
 my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
-  't/petstore-expanded.json'
+  't/03-corpus.json'
 );
 my $got = $converted->{schema}->to_doc;
 #open my $fh, '>', 'tf'; print $fh $got; # uncomment to regenerate
