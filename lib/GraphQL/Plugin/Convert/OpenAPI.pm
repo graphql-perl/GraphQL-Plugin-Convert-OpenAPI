@@ -48,8 +48,9 @@ sub make_field_resolver {
       ? $root_value->{$field_name}
       : $root_value;
     return $property->($args, $context, $info) if ref $property eq 'CODE';
+    return $property if ref $root_value eq 'HASH';
     return $property // die "OpenAPI.resolver could not resolve '$field_name'\n"
-      if ref $root_value eq 'HASH' or !$root_value->can($field_name);
+      if !$root_value->can($field_name);
     return $root_value->$field_name($args, $context, $info)
       if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
     # call OAC method

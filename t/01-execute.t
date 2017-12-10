@@ -36,6 +36,12 @@ my $doc = <<'EOF';
     reporter {
       name
     }
+    environment {
+      toolchain {
+        key
+        value
+      }
+    }
   }
 }
 EOF
@@ -54,6 +60,9 @@ __DATA__
   'data' => {
     'v3_report_get' => {
       'created' => '2017-11-16T13:32:21Z',
+      'environment' => {
+        'toolchain' => undef
+      },
       'id' => 'a35ce723-6bf8-1014-858b-1fdf904013f2',
       'reporter' => {
         'name' => 'Alexandr Ciornii (CHORNY)'
