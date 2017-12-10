@@ -16,6 +16,7 @@ my %TYPEMAP = (
   integer => 'Int',
   number => 'Float',
   boolean => 'Boolean',
+  file => 'String',
 );
 my %TYPE2SCALAR = map { ($_ => 1) } qw(ID String Int Float Boolean DateTime);
 my %METHOD2MUTATION = map { ($_ => 1) } qw(post put patch delete);
@@ -291,6 +292,7 @@ sub _kind2name2endpoint {
         $_->{schema}, 'param',
         $name2type,
       ), @successresponses;
+      @responsetypes = ('String') if !@responsetypes; # void return
       my $union = _make_union(
         \@responsetypes,
         $name2type,
