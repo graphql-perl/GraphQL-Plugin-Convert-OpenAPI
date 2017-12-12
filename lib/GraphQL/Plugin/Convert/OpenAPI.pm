@@ -461,6 +461,11 @@ or C<Mutation> otherwise
 
 =back
 
+If an output type has C<additionalProperties> (effectively a hash whose
+values are of a specified type), this poses a problem for GraphQL which
+does not have such a concept. It will be treated as being made up of a
+list of pairs of objects (i.e. hashes) with two keys: C<key> and C<value>.
+
 The queries will be run against the spec's server.  If the spec starts
 with a C</>, and a L<Mojolicious> app is supplied (see below), that
 server will instead be the given app.
@@ -477,9 +482,22 @@ L<Mojolicious> app can be given as the second argument.
 
 This is available as C<\&GraphQL::Plugin::Convert::OpenAPI::make_field_resolver>
 in case it is wanted for use outside of the "bundle" of the C<to_graphql>
-method. It takes one argument, a hash-ref mapping from a GraphQL operation
-field-name to an C<operationId>, and returns a closure that can be used
-as a field resolver.
+method. It takes arguments:
+
+=over
+
+=item
+
+a hash-ref mapping from a GraphQL operation field-name to an C<operationId>
+
+=item
+
+a hash-ref mapping from a GraphQL type-name to true if that type needs
+transforming from a hash into pairs
+
+=back
+
+and returns a closure that can be used as a field resolver.
 
 =head1 DEBUGGING
 
