@@ -58,6 +58,7 @@ sub make_field_resolver {
       # call OAC method
       my $got = $root_value->call($mapping->{$field_name} => $args);
       DEBUG and _debug('OpenAPI.resolver(got)', $got->res->json);
+      die $got->res->body."\n" if !$got->res->is_success;
       $got->res->json;
     };
     die $@ if $@;
