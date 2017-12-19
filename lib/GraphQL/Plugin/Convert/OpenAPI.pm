@@ -158,8 +158,15 @@ sub _get_type {
   }
   my $type = $info->{type};
   if (ref $type eq 'ARRAY') {
-    die "'$maybe_name' array type >1 element: (@$type)\n" if @$type > 1;
-    $type = $type->[0];
+    if (@$type > 1) {
+      if (grep $_ eq 'object', @$type) {
+        $type = 'object';
+      } else {
+        $type = 'string';
+      }
+    } else {
+      $type = $type->[0];
+    }
   }
   if (
     $info->{additionalProperties}
