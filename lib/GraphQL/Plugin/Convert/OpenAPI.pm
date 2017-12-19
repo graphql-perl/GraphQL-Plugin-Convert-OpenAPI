@@ -209,7 +209,9 @@ sub _get_spec_from_info {
     my $spec = +{
       kind => 'enum',
       name => $name,
-      values => +{ map { (_trim_name($_) => {}) } @$values },
+      values => +{ map {
+        (_trim_name($_) || 'EMPTY' => { value => $_ })
+      } @$values },
     };
     $spec->{description} = $refinfo->{title} if $refinfo->{title};
     $spec->{description} = $refinfo->{description}
