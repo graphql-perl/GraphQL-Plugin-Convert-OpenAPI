@@ -156,11 +156,16 @@ sub _get_type {
     $rawtype =~ s:^#/definitions/::;
     return $rawtype;
   }
+  my $type = $info->{type};
+  if (ref $type eq 'ARRAY') {
+    die "'$maybe_name' array type >1 element: (@$type)\n" if @$type > 1;
+    $type = $type->[0];
+  }
   if (
     $info->{additionalProperties}
-      or (($info->{type}//'') eq 'object' and !$info->{properties})
+      or (($type//'') eq 'object' and !$info->{properties})
   ) {
-    my $type = _get_type(
+    my $array_type = _get_type(
       {
         type => 'array',
         items => {
@@ -175,9 +180,9 @@ sub _get_type {
       $name2type,
       $type2info,
     );
-    DEBUG and _debug("_get_type($maybe_name) aP", $type);
+    DEBUG and _debug("_get_type($maybe_name) aP", $array_type);
     $type2info->{$maybe_name}{is_hashpair} = 1;
-    return $type;
+    return $array_type;
   }
   if ($info->{properties} or $info->{allOf} or $info->{enum}) {
     DEBUG and _debug("_get_type($maybe_name) p");
@@ -187,7 +192,7 @@ sub _get_type {
       $type2info,
     );
   }
-  if ($info->{type} eq 'array') {
+  if ($type eq 'array') {
     DEBUG and _debug("_get_type($maybe_name) a");
     return _apply_modifier(
       'list',
@@ -199,11 +204,10 @@ sub _get_type {
     );
   }
   return 'DateTime'
-    if ($info->{type}//'') eq 'string'
+    if ($type//'') eq 'string'
     and ($info->{format}//'') eq 'date-time';
   DEBUG and _debug("_get_type($maybe_name) simple");
-  $TYPEMAP{$info->{type}}
-    // die "'$maybe_name' unknown data type: @{[$info->{type}]}\n";
+  $TYPEMAP{$type} // die "'$maybe_name' unknown data type: @{[$type]}\n";
 }
 
 sub _refinfo2fields {
