@@ -8,6 +8,8 @@ t/00-report-prereqs.t
 t/01-corpus.json
 t/01-execute.t
 t/01-schema.t
+t/02-corpus.json
+t/02-schema.t
 t/03-corpus.json
 t/03-schema.t
 t/04-corpus.json
