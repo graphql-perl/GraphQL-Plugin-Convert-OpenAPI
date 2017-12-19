@@ -91,7 +91,10 @@ sub _get_type {
     $rawtype =~ s:^#/definitions/::;
     return $rawtype;
   }
-  if ($info->{additionalProperties}) {
+  if (
+    $info->{additionalProperties}
+      or (($info->{type}//'') eq 'object' and !$info->{properties})
+  ) {
     my $type = _get_type(
       {
         type => 'array',
@@ -99,7 +102,7 @@ sub _get_type {
           type => 'object',
           properties => {
             key => { type => 'string' },
-            value => $info->{additionalProperties},
+            value => $info->{additionalProperties} // { type => 'string' },
           },
         },
       },
