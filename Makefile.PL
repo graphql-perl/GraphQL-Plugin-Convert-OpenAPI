@@ -17,12 +17,12 @@ WriteMakefile(
     'Test::More' => '0.98',
     'JSON::Validator' => '1.07',
     'GraphQL' => '0.22', # multi-line comments
-    'OpenAPI::Client' => '0.13', # "call" interface
+    'OpenAPI::Client' => '0.14', # "call_p" interface
   },
   PREREQ_PM => {
     'JSON::Validator' => '1.07',
     'GraphQL' => '0.22', # multi-line comments
-    'OpenAPI::Client' => '0.13', # "call" interface
+    'OpenAPI::Client' => '0.14', # "call_p" interface
   },
   clean => { FILES => 'GraphQL-Plugin-Convert-OpenAPI-*' },
   META_MERGE => {
