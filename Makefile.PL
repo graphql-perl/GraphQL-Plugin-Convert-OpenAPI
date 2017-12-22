@@ -16,12 +16,14 @@ WriteMakefile(
   TEST_REQUIRES => {
     'Test::More' => '0.98',
     'JSON::Validator' => '1.07',
-    'GraphQL' => '0.22', # multi-line comments
+    'GraphQL' => '0.26', # promises
     'OpenAPI::Client' => '0.14', # "call_p" interface
+    'YAML::XS' => 0, # local.t needs
+    'Mojolicious::Plugin::GraphQL' => '0.09', # promises
   },
   PREREQ_PM => {
     'JSON::Validator' => '1.07',
-    'GraphQL' => '0.22', # multi-line comments
+    'GraphQL' => '0.26', # promises
     'OpenAPI::Client' => '0.14', # "call_p" interface
   },
   clean => { FILES => 'GraphQL-Plugin-Convert-OpenAPI-*' },

@@ -58,6 +58,7 @@ sub make_field_resolver {
         if !UNIVERSAL::isa($root_value, 'OpenAPI::Client');
       $is_oac = 1;
       # call OAC method
+      DEBUG and _debug('OpenAPI.resolver(c)', $mapping->{$field_name}, $args);
       my $got = $root_value->call_p($mapping->{$field_name} => $args)->then(
         sub {
           my $json = shift->res->json;
