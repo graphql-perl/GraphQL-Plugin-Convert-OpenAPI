@@ -4,6 +4,7 @@ use File::Spec;
 use GraphQL::Execution qw(execute);
 use Data::Dumper;
 use JSON::MaybeXS;
+use Mojolicious::Plugin::GraphQL qw(promise_code);
 
 plan skip_all => 'TEST_ONLINE=1' unless $ENV{TEST_ONLINE};
 
@@ -11,7 +12,13 @@ use_ok 'GraphQL::Plugin::Convert::OpenAPI';
 
 sub run_test {
   my ($args, $expected) = @_;
-  my $got = execute(@$args);
+  my @args = @$args;
+  $args[7] = promise_code();
+  my $got = execute(@args);
+  my @result;
+  $got->then(sub { @result = @_; });
+  $got->wait;
+  $got = $result[0];
   #open my $fh, '>', 'tf'; print $fh nice_dump($got); # uncomment to regenerate
   is_deeply $got, $expected or diag nice_dump($got);
 }

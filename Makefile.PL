@@ -19,7 +19,7 @@ WriteMakefile(
     'GraphQL' => '0.26', # promises
     'OpenAPI::Client' => '0.14', # "call_p" interface
     'YAML::XS' => 0, # local.t needs
-    'Mojolicious::Plugin::GraphQL' => '0.09', # promises
+    'Mojolicious::Plugin::GraphQL' => '0.10', # promise_code()
   },
   PREREQ_PM => {
     'JSON::Validator' => '1.07',
