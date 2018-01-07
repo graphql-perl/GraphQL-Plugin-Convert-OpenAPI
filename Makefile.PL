@@ -20,6 +20,7 @@ WriteMakefile(
     'OpenAPI::Client' => '0.14', # "call_p" interface
     'YAML::XS' => 0, # local.t needs
     'Mojolicious::Plugin::GraphQL' => '0.10', # promise_code()
+    'Test::Snapshot' => '0.02', # better snapshot filenames
   },
   PREREQ_PM => {
     'JSON::Validator' => '1.07',
