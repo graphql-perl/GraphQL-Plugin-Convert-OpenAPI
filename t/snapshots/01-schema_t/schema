@@ -78,8 +78,8 @@ input LanguageInput {
 }
 
 enum LanguageName {
-  Perl5
-  Perl6
+  Perl_5
+  Perl_6
 }
 
 type LanguageVariables {
@@ -114,7 +114,7 @@ input NewReportInput {
 }
 
 # Language data for Perl 5 reports
-type Perl5 implements Language {
+type Perl_5 implements Language {
   archname: String!
   build: String
   commit_id: String
@@ -124,9 +124,9 @@ type Perl5 implements Language {
 }
 
 # Language data for Perl 6 reports
-type Perl6 implements Language {
+type Perl_6 implements Language {
   archname: String!
-  backend: Perl6Backend
+  backend: Perl_6Backend
   build: String
   implementation: String
   name: LanguageName!
@@ -134,7 +134,7 @@ type Perl6 implements Language {
   version: String!
 }
 
-type Perl6Backend {
+type Perl_6Backend {
   engine: String
   version: String
 }

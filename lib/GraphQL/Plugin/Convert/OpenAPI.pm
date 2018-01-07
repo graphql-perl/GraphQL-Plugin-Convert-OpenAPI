@@ -86,7 +86,7 @@ sub make_field_resolver {
 sub _trim_name {
   my ($name) = @_;
   return if !defined $name;
-  $name =~ s#[^a-zA-Z0-9_]##g;
+  $name =~ s#[^a-zA-Z0-9_]+#_#g;
   $name;
 }
 
