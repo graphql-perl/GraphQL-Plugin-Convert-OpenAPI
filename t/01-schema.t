@@ -4,7 +4,6 @@ use Test::Snapshot;
 
 use_ok 'GraphQL::Plugin::Convert::OpenAPI';
 
-my $expected = join '', <DATA>;
 my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
   't/01-corpus.json'
 );
