@@ -1,0 +1,15 @@
+{
+  'data' => {
+    'getPetById' => {
+      'category' => {
+        'id' => 1331493758,
+        'name' => 'dog'
+      },
+      'name' => 'hello kity with form updated',
+      'photoUrls' => [
+        'http://foo.bar.com/1',
+        'http://foo.bar.com/2'
+      ]
+    }
+  }
+}
