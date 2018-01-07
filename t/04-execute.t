@@ -36,7 +36,7 @@ my $converted = GraphQL::Plugin::Convert::OpenAPI->to_graphql(
 
 my $doc = <<'EOF';
 {
-  getPetById(petId: 457453558) {
+  getPetById(petId: 1353) {
     category {
       id
       name
