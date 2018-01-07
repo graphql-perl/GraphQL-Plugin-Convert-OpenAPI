@@ -74,6 +74,7 @@ sub make_field_resolver {
           $json;
         }, sub {
           DEBUG and _debug('OpenAPI.resolver(error)', shift->res->body);
+          die shift->res . '';
         }
       );
     };
