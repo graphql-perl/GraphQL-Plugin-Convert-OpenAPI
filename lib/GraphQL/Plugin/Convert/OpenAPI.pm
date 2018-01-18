@@ -62,7 +62,10 @@ sub make_field_resolver {
       DEBUG and _debug('OpenAPI.resolver(c)', $mapping->{$field_name}, $args);
       my $got = $root_value->call_p($mapping->{$field_name} => $args)->then(
         sub {
-          my $json = shift->res->json;
+          my $res = shift->res;
+          DEBUG and _debug('OpenAPI.resolver(res)', $res);
+          die $res->body."\n" if $res->is_error;
+          my $json = $res->json;
           DEBUG and _debug('OpenAPI.resolver(got)', $json);
           my $return_type = $info->{return_type};
           $return_type = $return_type->of while $return_type->can('of');
