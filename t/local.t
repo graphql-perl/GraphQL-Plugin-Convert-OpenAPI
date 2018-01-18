@@ -14,6 +14,11 @@ get '/echo' => sub {
   my $self = shift->openapi->valid_input or return;
   $self->render(openapi => j $self->validation->output);
 }, 'echo';
+get '/other/:id' => sub {
+  my $self = shift->openapi->valid_input or return;
+  my $args = $self->validation->output;
+  $self->render(openapi => $args->{id});
+}, 'query with space';
 
 plugin OpenAPI => {spec => 'data://main/api.yaml'};
 # if don't give app arg, will try to go over socket and deadlock
@@ -39,6 +44,15 @@ my $d =
   );
 };
 
+subtest 'GraphQL op with spaces' => sub {
+my $d =
+  $t->post_ok('/graphql', { Content_Type => 'application/json' },
+    '{"query":"{query_with_space(id: 7)}"}',
+  )->json_is(
+    { 'data' => { 'query_with_space' => 7 } },
+  );
+};
+
 done_testing;
 
 __DATA__
@@ -61,5 +75,20 @@ paths:
       responses:
         200:
           description: Echo response
+          schema:
+            type: string
+  /other/{id}:
+    get:
+      operationId: query with space
+      parameters:
+      - description: ID of pet to fetch
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        200:
+          description: query response
           schema:
             type: string
