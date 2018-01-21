@@ -39,8 +39,8 @@ sub _remove_modifiers {
 }
 
 sub make_field_resolver {
-  my ($mapping, $type2info) = @_;
-  DEBUG and _debug('OpenAPI.make_field_resolver', $mapping, $type2info);
+  my ($type2info) = @_;
+  DEBUG and _debug('OpenAPI.make_field_resolver', $type2info);
   sub {
     my ($root_value, $args, $context, $info) = @_;
     my $field_name = $info->{field_name};
@@ -59,8 +59,10 @@ sub make_field_resolver {
       }
       $is_oac = 1;
       # call OAC method
-      DEBUG and _debug('OpenAPI.resolver(c)', $mapping->{$field_name}, $args);
-      my $got = $root_value->call_p($mapping->{$field_name} => $args)->then(
+      my $parent_type = $info->{parent_type}->to_string;
+      my $operationId = $type2info->{$parent_type}{field2operationId}{$field_name};
+      DEBUG and _debug('OpenAPI.resolver(c)', $operationId, $args);
+      my $got = $root_value->call_p($operationId => $args)->then(
         sub {
           my $res = shift->res;
           DEBUG and _debug('OpenAPI.resolver(res)', $res);
@@ -318,14 +320,14 @@ sub _resolve_schema_ref {
 
 sub _kind2name2endpoint {
   my ($paths, $schema, $name2type, $type2info) = @_;
-  my (%kind2name2endpoint, %field2operationId);
+  my %kind2name2endpoint;
   for my $path (keys %$paths) {
     for my $method (grep $paths->{$path}{$_}, @METHODS) {
       my $info = $paths->{$path}{$method};
       my $op_id = $info->{operationId} || $method.'_'._trim_name($path);
       my $fieldname = _trim_name($op_id);
-      $field2operationId{$fieldname} = $op_id;
       my $kind = $METHOD2MUTATION{$method} ? 'mutation' : 'query';
+      $type2info->{ucfirst $kind}{field2operationId}{$fieldname} = $op_id;
       my @successresponses = map _resolve_schema_ref($_, $schema),
         map $info->{responses}{$_},
         grep /^2/, keys %{$info->{responses}};
@@ -366,7 +368,7 @@ sub _kind2name2endpoint {
       };
     }
   }
-  (\%kind2name2endpoint, \%field2operationId);
+  (\%kind2name2endpoint);
 }
 
 sub to_graphql {
@@ -398,7 +400,7 @@ sub to_graphql {
       \%type2info,
     );
   }
-  my ($kind2name2endpoint, $field2operationId) = _kind2name2endpoint(
+  my ($kind2name2endpoint) = _kind2name2endpoint(
     $openapi_schema->get("/paths"), $openapi_schema,
     \%name2type,
     \%type2info,
@@ -431,7 +433,7 @@ sub to_graphql {
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => OpenAPI::Client->new($spec, %appargs),
-    resolver => make_field_resolver($field2operationId, \%type2info),
+    resolver => make_field_resolver(\%type2info),
   };
 }
 
@@ -507,10 +509,6 @@ method. It takes arguments:
 
 =item
 
-a hash-ref mapping from a GraphQL operation field-name to an C<operationId>
-
-=item
-
 a hash-ref mapping from a GraphQL type-name to another hash-ref with
 information about that type. Valid keys:
 
@@ -519,6 +517,12 @@ information about that type. Valid keys:
 =item is_hashpair
 
 True value if that type needs transforming from a hash into pairs.
+
+=item field2operationId
+
+Hash-ref mapping from a GraphQL operation field-name (which will
+only be done on the C<Query> or C<Mutation> types, for obvious reasons)
+to an C<operationId>.
 
 =back
 

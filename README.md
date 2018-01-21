@@ -54,12 +54,17 @@ This is available as `\&GraphQL::Plugin::Convert::OpenAPI::make_field_resolver`
 in case it is wanted for use outside of the "bundle" of the `to_graphql`
 method. It takes arguments:
 
-- a hash-ref mapping from a GraphQL operation field-name to an `operationId`
 - a hash-ref mapping from a GraphQL type-name to another hash-ref with
 information about that type. Valid keys:
     - is\_hashpair
 
         True value if that type needs transforming from a hash into pairs.
+
+    - field2operationId
+
+        Hash-ref mapping from a GraphQL operation field-name (which will
+        only be done on the `Query` or `Mutation` types, for obvious reasons)
+        to an `operationId`.
 
 and returns a closure that can be used as a field resolver.
 
