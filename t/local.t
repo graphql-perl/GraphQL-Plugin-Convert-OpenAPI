@@ -145,7 +145,10 @@ paths:
         200:
           description: query response
           schema:
-            type: object
-            properties:
-              with.dots:
-                type: string
+            $ref: "#/definitions/HudsonMasterComputermonitorData"
+definitions:
+  HudsonMasterComputermonitorData:
+    type: object
+    properties:
+      with.dots:
+        type: string

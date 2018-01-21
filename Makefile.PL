@@ -15,7 +15,7 @@ WriteMakefile(
   },
   TEST_REQUIRES => {
     'Test::More' => '0.98',
-    'JSON::Validator' => '1.07',
+    'JSON::Validator' => '2.01', # fqn bundle fix
     'GraphQL' => '0.26', # promises
     'OpenAPI::Client' => '0.14', # "call_p" interface
     'YAML::XS' => 0, # local.t needs
@@ -23,7 +23,7 @@ WriteMakefile(
     'Test::Snapshot' => '0.02', # better snapshot filenames
   },
   PREREQ_PM => {
-    'JSON::Validator' => '1.07',
+    'JSON::Validator' => '2.01', # fqn bundle fix
     'GraphQL' => '0.26', # promises
     'OpenAPI::Client' => '0.14', # "call_p" interface
   },
