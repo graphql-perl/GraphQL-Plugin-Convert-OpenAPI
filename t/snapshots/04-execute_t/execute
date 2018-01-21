@@ -2,10 +2,10 @@
   'data' => {
     'getPetById' => {
       'category' => {
-        'id' => 0,
+        'id' => 193844,
         'name' => 'string'
       },
-      'name' => 'doggie',
+      'name' => 'jonny',
       'photoUrls' => [
         'string'
       ]
