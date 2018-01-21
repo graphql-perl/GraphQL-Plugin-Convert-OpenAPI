@@ -375,6 +375,7 @@ sub to_graphql {
   my $openapi_schema = JSON::Validator::OpenAPI->new(
     %appargs
   )->schema($spec)->schema;
+  DEBUG and _debug('OpenAPI.schema', $openapi_schema);
   my $defs = $openapi_schema->get("/definitions");
   my @ast;
   my (
