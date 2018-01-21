@@ -55,8 +55,11 @@ in case it is wanted for use outside of the "bundle" of the `to_graphql`
 method. It takes arguments:
 
 - a hash-ref mapping from a GraphQL operation field-name to an `operationId`
-- a hash-ref mapping from a GraphQL type-name to true if that type needs
-transforming from a hash into pairs
+- a hash-ref mapping from a GraphQL type-name to another hash-ref with
+information about that type. Valid keys:
+    - is\_hashpair
+
+        True value if that type needs transforming from a hash into pairs.
 
 and returns a closure that can be used as a field resolver.
 
