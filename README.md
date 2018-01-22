@@ -55,7 +55,13 @@ in case it is wanted for use outside of the "bundle" of the `to_graphql`
 method. It takes arguments:
 
 - a hash-ref mapping from a GraphQL type-name to another hash-ref with
-information about that type. Valid keys:
+information about that type. There are addition pseudo-types with stored
+information, named eg `TypeName.fieldName`, for the obvious
+purpose. The use of `.` avoids clashing with real types. This will only
+have information about input types.
+
+    Valid keys:
+
     - is\_hashpair
 
         True value if that type needs transforming from a hash into pairs.
@@ -66,10 +72,10 @@ information about that type. Valid keys:
         only be done on the `Query` or `Mutation` types, for obvious reasons)
         to an `operationId`.
 
-    - field2argfield2prop
+    - field2type
 
         Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
-        its arguments, if any, to the corresponding OpenAPI property-name.
+        its arguments, if any, to the corresponding GraphQL type-name.
 
     - field2prop
 

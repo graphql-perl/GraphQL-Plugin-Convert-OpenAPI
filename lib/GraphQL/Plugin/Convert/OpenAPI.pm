@@ -39,8 +39,24 @@ sub _remove_modifiers {
 }
 
 sub _map_args {
-  my ($args, $argfield2prop, $type2info) = @_;
-  +{ map { ($argfield2prop->{$_} => $args->{$_}) } keys %$args };
+  my ($type, $args, $type2info) = @_;
+  DEBUG and _debug('OpenAPI._map_args', $type, $args, $type2info);
+  die "Undefined type" if !defined $type;
+  return $args if $TYPE2SCALAR{$type};
+  if (ref $type eq 'ARRAY') {
+    # type modifiers
+    my ($mod, $typespec) = @$type;
+    return _map_args($typespec->{type}, @_[1..3]) if $mod eq 'non_null';
+    die "Invalid typespec @$type" if $mod ne 'list';
+    return [ map _map_args($typespec->{type}, $_, @_[2..3]), @$args ];
+  }
+  my $field2prop = $type2info->{$type}{field2prop};
+  my $field2type = $type2info->{$type}{field2type};
+  +{ map {
+    ($field2prop->{$_} => _map_args(
+      $field2type->{$_}, $args->{$_}, $type2info,
+    ))
+  } keys %$args };
 }
 
 sub make_field_resolver {
@@ -50,7 +66,8 @@ sub make_field_resolver {
     my ($root_value, $args, $context, $info) = @_;
     my $field_name = $info->{field_name};
     my $parent_type = $info->{parent_type}->to_string;
-    DEBUG and _debug('OpenAPI.resolver', $root_value, $field_name, $args);
+    my $pseudo_type = join '.', $parent_type, $field_name;
+    DEBUG and _debug('OpenAPI.resolver', $root_value, $field_name, $pseudo_type, $args);
     if (
       ref($root_value) eq 'HASH' and
       $type2info->{$parent_type} and
@@ -72,8 +89,8 @@ sub make_field_resolver {
       # call OAC method
       my $operationId = $type2info->{$parent_type}{field2operationId}{$field_name};
       my $mapped_args = _map_args(
+        $pseudo_type,
         $args,
-        $type2info->{$parent_type}{field2argfield2prop}{$field_name},
         $type2info,
       );
       DEBUG and _debug('OpenAPI.resolver(c)', $operationId, $args, $mapped_args);
@@ -179,7 +196,8 @@ sub _refinfo2fields {
   for my $prop (keys %$properties) {
     my $info = $properties->{$prop};
     my $field = _trim_name($prop);
-    DEBUG and _debug("_refinfo2fields($name) $prop/$field", $info);
+    $type2info->{$name}{field2prop}{$field} = $prop;
+    DEBUG and _debug("_refinfo2fields($name) $prop/$field", $info, $type2info->{$name});
     my $rawtype = _get_type(
       $info, $name.ucfirst($field),
       $name2type,
@@ -189,7 +207,7 @@ sub _refinfo2fields {
       $required{$prop} && 'non_null',
       $rawtype,
     );
-    $type2info->{$name}{field2prop}{$field} = $prop;
+    $type2info->{$name}{field2type}{$field} = $fulltype;
     $fields{$field} = +{ type => $fulltype };
     $fields{$field}->{description} = $info->{description}
       if $info->{description};
@@ -286,7 +304,7 @@ sub _make_union {
 }
 
 sub _make_input {
-  my ($type, $name2type) = @_;
+  my ($type, $name2type, $type2info) = @_;
   DEBUG and _debug("_make_input", $type);
   $type = $type->{type} if ref $type eq 'HASH';
   if (ref $type eq 'ARRAY') {
@@ -296,6 +314,7 @@ sub _make_input {
       _make_input(
         $type->[1],
         $name2type,
+        $type2info,
       ),
     )
   }
@@ -307,8 +326,7 @@ sub _make_input {
   # is an output "type"
   my $input_name = $type.'Input';
   my $typedef = $name2type->{$type};
-  DEBUG and _debug("_make_input(object)", $name2type, $typedef);
-  $name2type->{$input_name} ||= {
+  my $inputdef = $name2type->{$input_name} ||= {
     name => $input_name,
     kind => 'input',
     $typedef->{description} ? (description => $typedef->{description}) : (),
@@ -319,11 +337,20 @@ sub _make_input {
           %$fielddef, type => _make_input(
             $fielddef->{type},
             $name2type,
+            $type2info,
           ),
         })
       } keys %{$typedef->{fields}}
     },
   };
+  my $inputdef_fields = $inputdef->{fields};
+  $type2info->{$input_name}{field2prop} = $type2info->{$type}{field2prop};
+  $type2info->{$input_name}{field2type} = +{
+    map {
+      ($_ => $inputdef_fields->{$_}{type})
+    } keys %$inputdef_fields
+  };
+  DEBUG and _debug("_make_input(object)($input_name)", $typedef, $type2info->{$input_name}, $type2info->{$type}, $name2type, $type2info);
   $input_name;
 }
 
@@ -361,9 +388,11 @@ sub _kind2name2endpoint {
       );
       my @parameters = map _resolve_schema_ref($_, $schema),
         @{ $info->{parameters} };
+      my $pseudo_type = join '.', ucfirst($kind), $fieldname;
       my %args = map {
         my $argprop = $_->{name};
         my $argfield = _trim_name($argprop);
+        $type2info->{$pseudo_type}{field2prop}{$argfield} = $argprop;
         my $type = _get_type(
           $_->{schema} ? $_->{schema} : $_, "${fieldname}_$argfield",
           $name2type,
@@ -372,8 +401,9 @@ sub _kind2name2endpoint {
         $type = _make_input(
           $type,
           $name2type,
+          $type2info,
         );
-        $type2info->{ucfirst $kind}{field2argfield2prop}{$fieldname}{$argfield} = $argprop;
+        $type2info->{$pseudo_type}{field2type}{$argfield} = $type;
         ($argfield => {
           type => _apply_modifier($_->{required} && 'non_null', $type),
           $_->{description} ? (description => $_->{description}) : (),
@@ -530,7 +560,12 @@ method. It takes arguments:
 =item
 
 a hash-ref mapping from a GraphQL type-name to another hash-ref with
-information about that type. Valid keys:
+information about that type. There are addition pseudo-types with stored
+information, named eg C<TypeName.fieldName>, for the obvious
+purpose. The use of C<.> avoids clashing with real types. This will only
+have information about input types.
+
+Valid keys:
 
 =over
 
@@ -544,10 +579,10 @@ Hash-ref mapping from a GraphQL operation field-name (which will
 only be done on the C<Query> or C<Mutation> types, for obvious reasons)
 to an C<operationId>.
 
-=item field2argfield2prop
+=item field2type
 
 Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
-its arguments, if any, to the corresponding OpenAPI property-name.
+its arguments, if any, to the corresponding GraphQL type-name.
 
 =item field2prop
 
