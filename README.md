@@ -71,6 +71,11 @@ information about that type. Valid keys:
         Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
         its arguments, if any, to the corresponding OpenAPI property-name.
 
+    - field2prop
+
+        Hash-ref mapping from a GraphQL type's field-name to the corresponding
+        OpenAPI property-name.
+
 and returns a closure that can be used as a field resolver.
 
 # DEBUGGING

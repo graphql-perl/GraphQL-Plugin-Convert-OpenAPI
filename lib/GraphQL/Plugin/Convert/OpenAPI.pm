@@ -49,7 +49,15 @@ sub make_field_resolver {
   sub {
     my ($root_value, $args, $context, $info) = @_;
     my $field_name = $info->{field_name};
+    my $parent_type = $info->{parent_type}->to_string;
     DEBUG and _debug('OpenAPI.resolver', $root_value, $field_name, $args);
+    if (
+      ref($root_value) eq 'HASH' and
+      $type2info->{$parent_type} and
+      my $prop = $type2info->{$parent_type}{field2prop}{$field_name}
+    ) {
+      return $root_value->{$prop};
+    }
     my $property = ref($root_value) eq 'HASH'
       ? $root_value->{$field_name}
       : $root_value;
@@ -62,7 +70,6 @@ sub make_field_resolver {
         return $root_value->$field_name($args, $context, $info);
       }
       # call OAC method
-      my $parent_type = $info->{parent_type}->to_string;
       my $operationId = $type2info->{$parent_type}{field2operationId}{$field_name};
       my $mapped_args = _map_args(
         $args,
@@ -171,9 +178,10 @@ sub _refinfo2fields {
   my %required = map { ($_ => 1) } @{$refinfo->{required}};
   for my $prop (keys %$properties) {
     my $info = $properties->{$prop};
-    DEBUG and _debug("_refinfo2fields($name) $prop", $info);
+    my $field = _trim_name($prop);
+    DEBUG and _debug("_refinfo2fields($name) $prop/$field", $info);
     my $rawtype = _get_type(
-      $info, $name.ucfirst($prop),
+      $info, $name.ucfirst($field),
       $name2type,
       $type2info,
     );
@@ -181,8 +189,9 @@ sub _refinfo2fields {
       $required{$prop} && 'non_null',
       $rawtype,
     );
-    $fields{$prop} = +{ type => $fulltype };
-    $fields{$prop}->{description} = $info->{description}
+    $type2info->{$name}{field2prop}{$field} = $prop;
+    $fields{$field} = +{ type => $fulltype };
+    $fields{$field}->{description} = $info->{description}
       if $info->{description};
   }
   \%fields;
@@ -539,6 +548,11 @@ to an C<operationId>.
 
 Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
 its arguments, if any, to the corresponding OpenAPI property-name.
+
+=item field2prop
+
+Hash-ref mapping from a GraphQL type's field-name to the corresponding
+OpenAPI property-name.
 
 =back
 

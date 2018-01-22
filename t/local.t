@@ -23,8 +23,9 @@ post '/withdots' => sub {
   my $self = shift->openapi->valid_input or return;
   my $args = $self->validation->output;
   $self->render(
-    openapi => join '',
+    openapi => +{ 'with.dots' => join '',
       $args->{'arg.dots'},
+    },
   );
 }, 'query with dots';
 
@@ -66,12 +67,12 @@ my $d =
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     <<'EOF',
 {"query":
-  "mutation m {query_with_dots(arg_dots: \"ARGH\")}"
+  "mutation m {query_with_dots(arg_dots: \"ARGH\") { with_dots }}"
 }
 EOF
   )->json_is({
     data => {
-      query_with_dots => "ARGH",
+      query_with_dots => { with_dots => "ARGH" },
     }
   });
 };
@@ -126,4 +127,7 @@ paths:
         200:
           description: query response
           schema:
-            type: string
+            type: object
+            properties:
+              with.dots:
+                type: string
