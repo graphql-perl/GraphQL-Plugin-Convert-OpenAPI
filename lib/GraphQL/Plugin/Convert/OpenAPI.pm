@@ -53,7 +53,6 @@ sub make_field_resolver {
     my $property = ref($root_value) eq 'HASH'
       ? $root_value->{$field_name}
       : $root_value;
-    my $is_oac = 0;
     my $result = eval {
       return $property->($args, $context, $info) if ref $property eq 'CODE';
       return $property if ref $root_value eq 'HASH';
@@ -62,7 +61,6 @@ sub make_field_resolver {
           if !$root_value->can($field_name);
         return $root_value->$field_name($args, $context, $info);
       }
-      $is_oac = 1;
       # call OAC method
       my $parent_type = $info->{parent_type}->to_string;
       my $operationId = $type2info->{$parent_type}{field2operationId}{$field_name};
