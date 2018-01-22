@@ -372,7 +372,7 @@ sub _kind2name2endpoint {
         $type = _make_input(
           $type,
           $name2type,
-        ) if $kind eq 'mutation';
+        );
         $type2info->{ucfirst $kind}{field2argfield2prop}{$fieldname}{$argfield} = $argprop;
         ($argfield => {
           type => _apply_modifier($_->{required} && 'non_null', $type),
