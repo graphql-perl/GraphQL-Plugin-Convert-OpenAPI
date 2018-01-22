@@ -19,6 +19,14 @@ get '/other/:id' => sub {
   my $args = $self->validation->output;
   $self->render(openapi => $args->{id});
 }, 'query with space';
+post '/withdots' => sub {
+  my $self = shift->openapi->valid_input or return;
+  my $args = $self->validation->output;
+  $self->render(
+    openapi => join '',
+      $args->{'arg.dots'},
+  );
+}, 'query with dots';
 
 plugin OpenAPI => {spec => 'data://main/api.yaml'};
 # if don't give app arg, will try to go over socket and deadlock
@@ -51,6 +59,21 @@ my $d =
   )->json_is(
     { 'data' => { 'query_with_space' => 7 } },
   );
+};
+
+subtest 'GraphQL op with dots' => sub {
+my $d =
+  $t->post_ok('/graphql', { Content_Type => 'application/json' },
+    <<'EOF',
+{"query":
+  "mutation m {query_with_dots(arg_dots: \"ARGH\")}"
+}
+EOF
+  )->json_is({
+    data => {
+      query_with_dots => "ARGH",
+    }
+  });
 };
 
 done_testing;
@@ -87,6 +110,18 @@ paths:
         name: id
         required: true
         type: integer
+      responses:
+        200:
+          description: query response
+          schema:
+            type: string
+  /withdots:
+    post:
+      operationId: query with dots
+      parameters:
+      - in: query
+        name: arg.dots
+        type: string
       responses:
         200:
           description: query response

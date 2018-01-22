@@ -38,6 +38,11 @@ sub _remove_modifiers {
   _remove_modifiers($typespec->[1]);
 }
 
+sub _map_args {
+  my ($args, $argfield2prop, $type2info) = @_;
+  +{ map { ($argfield2prop->{$_} => $args->{$_}) } keys %$args };
+}
+
 sub make_field_resolver {
   my ($type2info) = @_;
   DEBUG and _debug('OpenAPI.make_field_resolver', $type2info);
@@ -61,8 +66,13 @@ sub make_field_resolver {
       # call OAC method
       my $parent_type = $info->{parent_type}->to_string;
       my $operationId = $type2info->{$parent_type}{field2operationId}{$field_name};
-      DEBUG and _debug('OpenAPI.resolver(c)', $operationId, $args);
-      my $got = $root_value->call_p($operationId => $args)->then(
+      my $mapped_args = _map_args(
+        $args,
+        $type2info->{$parent_type}{field2argfield2prop}{$field_name},
+        $type2info,
+      );
+      DEBUG and _debug('OpenAPI.resolver(c)', $operationId, $args, $mapped_args);
+      my $got = $root_value->call_p($operationId => $mapped_args)->then(
         sub {
           my $res = shift->res;
           DEBUG and _debug('OpenAPI.resolver(res)', $res);
@@ -345,8 +355,10 @@ sub _kind2name2endpoint {
       my @parameters = map _resolve_schema_ref($_, $schema),
         @{ $info->{parameters} };
       my %args = map {
+        my $argprop = $_->{name};
+        my $argfield = _trim_name($argprop);
         my $type = _get_type(
-          $_->{schema} ? $_->{schema} : $_, "${fieldname}_$_->{name}",
+          $_->{schema} ? $_->{schema} : $_, "${fieldname}_$argfield",
           $name2type,
           $type2info,
         );
@@ -354,7 +366,8 @@ sub _kind2name2endpoint {
           $type,
           $name2type,
         ) if $kind eq 'mutation';
-        ($_->{name} => {
+        $type2info->{ucfirst $kind}{field2argfield2prop}{$fieldname}{$argfield} = $argprop;
+        ($argfield => {
           type => _apply_modifier($_->{required} && 'non_null', $type),
           $_->{description} ? (description => $_->{description}) : (),
         })
@@ -523,6 +536,11 @@ True value if that type needs transforming from a hash into pairs.
 Hash-ref mapping from a GraphQL operation field-name (which will
 only be done on the C<Query> or C<Mutation> types, for obvious reasons)
 to an C<operationId>.
+
+=item field2argfield2prop
+
+Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
+its arguments, if any, to the corresponding OpenAPI property-name.
 
 =back
 

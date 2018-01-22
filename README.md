@@ -66,6 +66,11 @@ information about that type. Valid keys:
         only be done on the `Query` or `Mutation` types, for obvious reasons)
         to an `operationId`.
 
+    - field2argfield2prop
+
+        Hash-ref mapping from a GraphQL type's field-name to hash-ref mapping
+        its arguments, if any, to the corresponding OpenAPI property-name.
+
 and returns a closure that can be used as a field resolver.
 
 # DEBUGGING
