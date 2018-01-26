@@ -292,7 +292,7 @@ sub _make_union {
   my ($types, $name2type) = @_;
   my %seen;
   my $types2 = [ sort grep !$seen{$_}++, map _remove_modifiers($_), @$types ];
-  return $types->[0] if @$types == 1; # no need for a union
+  return $types->[0] if @$types2 == 1; # no need for a union
   my $typename = join '', @$types2, 'Union';
   DEBUG and _debug("_make_union", $types, $types2, $typename);
   $name2type->{$typename} ||= {
