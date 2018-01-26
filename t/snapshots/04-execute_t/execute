@@ -2,13 +2,11 @@
   'data' => {
     'getPetById' => {
       'category' => {
-        'id' => 193844,
-        'name' => 'string'
+        'id' => 0,
+        'name' => ''
       },
-      'name' => 'jonny',
-      'photoUrls' => [
-        'string'
-      ]
+      'name' => 'asd',
+      'photoUrls' => []
     }
   }
 }
