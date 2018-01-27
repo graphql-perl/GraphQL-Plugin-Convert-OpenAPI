@@ -42,7 +42,7 @@ sub _map_args {
   my ($type, $args, $type2info) = @_;
   DEBUG and _debug('OpenAPI._map_args', $type, $args, $type2info);
   die "Undefined type" if !defined $type;
-  return $args if $TYPE2SCALAR{$type};
+  return $args if $TYPE2SCALAR{$type} or $type2info->{$type}{is_enum};
   if (ref $type eq 'ARRAY') {
     # type modifiers
     my ($mod, $typespec) = @$type;
@@ -256,18 +256,24 @@ sub _get_spec_from_info {
       }
     }
   } elsif (my $values = $refinfo->{enum}) {
-    DEBUG and _debug("_get_spec_from_info($name)(enum)", $values);
+    my (%enum2value, %trimmed2suffix);
+    for my $uniqvalue (sort keys %{{ @$values, reverse @$values }}) {
+      my $trimmed = _trim_name($uniqvalue);
+      $trimmed = 'EMPTY' if !length $trimmed;
+      $trimmed .= $trimmed2suffix{$trimmed}++ || '';
+      $enum2value{$trimmed} = { value => $uniqvalue };
+    }
+    DEBUG and _debug("_get_spec_from_info($name)(enum)", $values, \%enum2value);
     my $spec = +{
       kind => 'enum',
       name => $name,
-      values => +{ map {
-        (_trim_name($_) || 'EMPTY' => { value => $_ })
-      } @$values },
+      values => \%enum2value,
     };
     $spec->{description} = $refinfo->{title} if $refinfo->{title};
     $spec->{description} = $refinfo->{description}
       if $refinfo->{description};
     $name2type->{$name} = $spec;
+    $type2info->{$name}{is_enum} = 1;
     return $name;
   } else {
     %$fields = (%$fields, %{_refinfo2fields(
@@ -592,6 +598,10 @@ its arguments, if any, to the corresponding GraphQL type-name.
 
 Hash-ref mapping from a GraphQL type's field-name to the corresponding
 OpenAPI property-name.
+
+=item is_enum
+
+Boolean value indicating whether the type is a L<GraphQL::Type::Enum>.
 
 =back
 

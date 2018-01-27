@@ -30,6 +30,13 @@ post '/withdots' => sub {
     },
   );
 }, 'query with dots';
+get '/enumtest' => sub {
+  my $self = shift->openapi->valid_input or return;
+  my $args = $self->validation->output;
+  $self->render(
+    openapi => $args->{enumArg},
+  );
+}, 'enum.echo';
 
 plugin OpenAPI => {spec => 'data://main/api.yaml'};
 # if don't give app arg, will try to go over socket and deadlock
@@ -75,6 +82,21 @@ EOF
   )->json_is({
     data => {
       query_with_dots => { with_dots => "ARGH!?" },
+    }
+  });
+};
+
+subtest 'GraphQL enum op' => sub {
+my $d =
+  $t->post_ok('/graphql', { Content_Type => 'application/json' },
+    <<'EOF',
+{"query":
+  "{enum_echo(enumArg: [EMPTY, dot_space, dot_space, dot_space1, dot_space1, dot_space1])}"
+}
+EOF
+  )->json_is({
+    data => {
+      enum_echo => [qw(EMPTY dot_space dot_space dot_space1 dot_space1 dot_space1)],
     }
   });
 };
@@ -146,9 +168,31 @@ paths:
           description: query response
           schema:
             $ref: "#/definitions/HudsonMasterComputermonitorData"
+  /enumtest:
+    get:
+      operationId: enum.echo
+      parameters:
+      - in: query
+        name: enumArg
+        type: array
+        items:
+          $ref: "#/definitions/BigEnum"
+      responses:
+        200:
+          description: query response
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/BigEnum"
 definitions:
   HudsonMasterComputermonitorData:
     type: object
     properties:
       with.dots:
         type: string
+  BigEnum:
+    type: string
+    enum:
+      - dot.space
+      - dot space
+      - ""

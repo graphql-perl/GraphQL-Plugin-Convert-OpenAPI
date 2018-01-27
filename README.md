@@ -82,6 +82,10 @@ have information about input types.
         Hash-ref mapping from a GraphQL type's field-name to the corresponding
         OpenAPI property-name.
 
+    - is\_enum
+
+        Boolean value indicating whether the type is a [GraphQL::Type::Enum](https://metacpan.org/pod/GraphQL::Type::Enum).
+
 and returns a closure that can be used as a field resolver.
 
 # DEBUGGING
