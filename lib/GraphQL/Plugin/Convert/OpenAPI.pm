@@ -132,7 +132,8 @@ sub _get_type {
   my ($info, $maybe_name, $name2type, $type2info) = @_;
   DEBUG and _debug("_get_type($maybe_name)", $info);
   return 'String' if !$info or !%$info; # bodge but unavoidable
-  if ($info->{'$ref'}) {
+  # ignore definitions that are an array as not GQL-idiomatic, deal as array
+  if ($info->{'$ref'} and ($info->{type}//'') ne 'array') {
     DEBUG and _debug("_get_type($maybe_name) ref");
     my $rawtype = $info->{'$ref'};
     $rawtype =~ s:^#/definitions/::;
@@ -435,7 +436,10 @@ sub to_graphql {
     %type2info,
   );
   # all non-interface-consumers first
-  for my $name (grep !$defs->{$_}{allOf}, keys %$defs) {
+  # also drop defs that are an array as not GQL-idiomatic - treat as that array
+  for my $name (
+    grep !$defs->{$_}{allOf} && ($defs->{$_}{type}//'') ne 'array', keys %$defs
+  ) {
     _get_spec_from_info(
       _trim_name($name), $defs->{$name},
       \%name2type,
