@@ -554,8 +554,17 @@ server will instead be the given app.
 =head1 ARGUMENTS
 
 To the C<to_graphql> method: a URL to a specification, or a filename
-containing a JSON specification, of an OpenAPI v2. Optionally, a
-L<Mojolicious> app can be given as the second argument.
+containing a JSON specification, or a data structure, of an OpenAPI v2.
+
+Optionally, a L<Mojolicious> app can be given as the second argument. In
+this case, with a L<Mojolicious::Lite> app, do:
+
+  my $api = plugin OpenAPI => {spec => 'data://main/api.yaml'};
+  plugin(GraphQL => {convert => [ 'OpenAPI', $api->validator->bundle, app ]});
+
+with the usual mapping in the case of a full app. For this to work you
+need L<Mojolicious::Plugin::OpenAPI> version 1.25+, which returns itself
+on C<register>.
 
 =head1 PACKAGE FUNCTIONS
 
