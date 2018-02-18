@@ -45,7 +45,6 @@ plugin GraphQL => {convert => [ qw(OpenAPI /api), app ]};
 my $t = Test::Mojo->new;
 
 subtest 'REST request' => sub {
-my $d =
   $t->get_ok(
     '/api/echo?arg=Hello',
   )->content_like(
@@ -54,7 +53,6 @@ my $d =
 };
 
 subtest 'GraphQL with POST' => sub {
-my $d =
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     '{"query":"{echo(arg: \"Yo\")}"}',
   )->json_is(
@@ -63,7 +61,6 @@ my $d =
 };
 
 subtest 'GraphQL op with spaces' => sub {
-my $d =
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     '{"query":"{query_with_space(id: 7)}"}',
   )->json_is(
@@ -72,7 +69,6 @@ my $d =
 };
 
 subtest 'GraphQL op with dots' => sub {
-my $d =
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     <<'EOF',
 {"query":
@@ -87,7 +83,6 @@ EOF
 };
 
 subtest 'GraphQL enum op' => sub {
-my $d =
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     <<'EOF',
 {"query":
