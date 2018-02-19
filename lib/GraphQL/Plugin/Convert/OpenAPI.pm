@@ -193,7 +193,7 @@ sub _refinfo2fields {
   my ($name, $refinfo, $name2type, $type2info) = @_;
   my %fields;
   my $properties = $refinfo->{properties};
-  my %required = map { ($_ => 1) } @{$refinfo->{required}};
+  my %required = map { ($_ => 1) } @{$refinfo->{required} || []};
   for my $prop (keys %$properties) {
     my $info = $properties->{$prop};
     my $field = _trim_name($prop);
@@ -492,7 +492,7 @@ sub to_graphql {
   };
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
-    root_value => OpenAPI::Client->new($spec, %appargs),
+    root_value => OpenAPI::Client->new($openapi_schema->data, %appargs),
     resolver => make_field_resolver(\%type2info),
   };
 }
