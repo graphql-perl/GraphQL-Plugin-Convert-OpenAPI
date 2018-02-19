@@ -38,9 +38,9 @@ get '/enumtest' => sub {
   );
 }, 'enum.echo';
 
-plugin OpenAPI => {spec => 'data://main/api.yaml'};
+my $api = plugin OpenAPI => {spec => 'data://main/api.yaml'};
 # if don't give app arg, will try to go over socket and deadlock
-plugin GraphQL => {convert => [ qw(OpenAPI /api), app ]};
+plugin GraphQL => {convert => [ 'OpenAPI', $api->validator->bundle, app ]};
 
 my $t = Test::Mojo->new;
 
