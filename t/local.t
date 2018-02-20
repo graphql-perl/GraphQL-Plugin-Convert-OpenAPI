@@ -12,7 +12,7 @@ use Mojolicious::Lite;
 # gets put under /api. Magic!
 get '/echo' => sub {
   my $self = shift->openapi->valid_input or return;
-  $self->render(openapi => j $self->validation->output);
+  $self->render(openapi => $self->req->param('arg'));
 }, 'echo';
 get '/other/:id' => sub {
   my $self = shift->openapi->valid_input or return;
@@ -47,16 +47,16 @@ my $t = Test::Mojo->new;
 subtest 'REST request' => sub {
   $t->get_ok(
     '/api/echo?arg=Hello',
-  )->content_like(
-    qr/Hello/,
+  )->json_is(
+    'Hello',
   );
 };
 
 subtest 'GraphQL with POST' => sub {
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
-    '{"query":"{echo(arg: \"Yo\")}"}',
+    j { query=>'{echo(arg: "Yo")}' },
   )->json_is(
-    { 'data' => { 'echo' => '{"arg":"Yo"}' } },
+    { data => { echo => 'Yo' } },
   );
 };
 
