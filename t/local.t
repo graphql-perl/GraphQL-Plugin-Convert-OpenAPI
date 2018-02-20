@@ -72,6 +72,14 @@ subtest 'GraphQL with POST' => sub {
   );
 };
 
+subtest 'GraphQL with "object"' => sub {
+  $t->post_ok('/graphql', { Content_Type => 'application/json' },
+    j {query=>'mutation m {echoPost(body: [{key:"one", value:"two"}]) { key value }}'},
+  )->json_is(
+    { data => { echoPost => [{key=>"one", value=>"two"}] } },
+  );
+};
+
 subtest 'GraphQL op with spaces' => sub {
   $t->post_ok('/graphql', { Content_Type => 'application/json' },
     '{"query":"{query_with_space(id: 7)}"}',
