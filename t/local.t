@@ -14,6 +14,10 @@ get '/echo' => sub {
   my $self = shift->openapi->valid_input or return;
   $self->render(openapi => $self->req->param('arg'));
 }, 'echo';
+post '/echo' => sub {
+  my $self = shift->openapi->valid_input or return;
+  $self->render(openapi => $self->req->json);
+}, 'echoPost';
 get '/other/:id' => sub {
   my $self = shift->openapi->valid_input or return;
   my $args = $self->validation->output;
@@ -49,6 +53,14 @@ subtest 'REST request' => sub {
     '/api/echo?arg=Hello',
   )->json_is(
     'Hello',
+  );
+};
+
+subtest 'REST post' => sub {
+  $t->post_ok('/api/echo', { Content_Type => 'application/json' },
+    j {hi=>"there"},
+  )->json_is(
+    { hi => 'there' },
   );
 };
 
@@ -120,6 +132,18 @@ paths:
           description: Echo response
           schema:
             type: string
+    post:
+      operationId: echoPost
+      parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+      responses:
+        200:
+          description: Echo response
+          schema:
+            type: object
   /other/{id}:
     get:
       operationId: query with space
