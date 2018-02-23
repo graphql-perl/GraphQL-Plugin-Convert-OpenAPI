@@ -42,7 +42,7 @@ sub _map_args {
   my ($type, $args, $type2info) = @_;
   DEBUG and _debug('OpenAPI._map_args', $type, $args, $type2info);
   die "Undefined type" if !defined $type;
-  return $args if $TYPE2SCALAR{$type} or $type2info->{$type}{is_enum};
+  return $args if $TYPE2SCALAR{$type} or ($type2info->{$type}||{})->{is_enum};
   if (ref $type eq 'ARRAY') {
     # type modifiers
     my ($mod, $typespec) = @$type;
