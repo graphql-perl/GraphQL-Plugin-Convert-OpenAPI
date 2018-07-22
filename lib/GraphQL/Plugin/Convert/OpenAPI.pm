@@ -486,12 +486,14 @@ sub to_graphql {
     \%name2type,
     \%type2info,
   );
+  for my $kind (keys %$kind2name2endpoint) {
+    $name2type{ucfirst $kind} = +{
+      kind => 'type',
+      name => ucfirst $kind,
+      fields => { %{ $kind2name2endpoint->{$kind} } },
+    };
+  }
   push @ast, values %name2type;
-  push @ast, map { my $kind = $_; +{
-    kind => 'type',
-    name => ucfirst $kind,
-    fields => { %{ $kind2name2endpoint->{$kind} } },
-  } } keys %$kind2name2endpoint;
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => OpenAPI::Client->new($openapi_schema->data, %appargs),
