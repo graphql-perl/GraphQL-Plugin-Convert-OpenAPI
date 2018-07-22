@@ -487,30 +487,18 @@ sub to_graphql {
     \%type2info,
   );
   push @ast, values %name2type;
-  push @ast, {
+  push @ast, map { my $kind = $_; +{
     kind => 'type',
-    name => 'Query',
+    name => ucfirst $kind,
     fields => {
       map {
         my $name = $_;
         (
-          $name => $kind2name2endpoint->{query}{$name},
+          $name => $kind2name2endpoint->{$kind}{$name},
         )
-      } keys %{ $kind2name2endpoint->{query} }
+      } keys %{ $kind2name2endpoint->{$kind} }
     },
-  };
-  push @ast, {
-    kind => 'type',
-    name => 'Mutation',
-    fields => {
-      map {
-        my $name = $_;
-        (
-          $name => $kind2name2endpoint->{mutation}{$name},
-        )
-      } keys %{ $kind2name2endpoint->{mutation} }
-    },
-  };
+  } } qw(query mutation);
   +{
     schema => GraphQL::Schema->from_ast(\@ast),
     root_value => OpenAPI::Client->new($openapi_schema->data, %appargs),
