@@ -19,26 +19,9 @@ type Comment {
   updatedAt: DateTime!
 }
 
-type GenericErrorModel {
-  errors: GenericErrorModelErrors!
-}
-
-type GenericErrorModelErrors {
-  body: [String]!
-}
-
-type LoginUser {
-  email: String!
-  password: String!
-}
-
 input LoginUserInput {
   email: String!
   password: String!
-}
-
-type LoginUserRequest {
-  user: LoginUser!
 }
 
 input LoginUserRequestInput {
@@ -81,13 +64,6 @@ type Mutation {
   UpdateCurrentUser(body: UpdateUserRequestInput!): UserResponse
 }
 
-type NewArticle {
-  body: String!
-  description: String!
-  tagList: [String]
-  title: String!
-}
-
 input NewArticleInput {
   body: String!
   description: String!
@@ -95,44 +71,22 @@ input NewArticleInput {
   title: String!
 }
 
-type NewArticleRequest {
-  article: NewArticle!
-}
-
 input NewArticleRequestInput {
   article: NewArticleInput!
-}
-
-type NewComment {
-  body: String!
 }
 
 input NewCommentInput {
   body: String!
 }
 
-type NewCommentRequest {
-  comment: NewComment!
-}
-
 input NewCommentRequestInput {
   comment: NewCommentInput!
-}
-
-type NewUser {
-  email: String!
-  password: String!
-  username: String!
 }
 
 input NewUserInput {
   email: String!
   password: String!
   username: String!
-}
-
-type NewUserRequest {
-  user: NewUser!
 }
 
 input NewUserRequestInput {
@@ -179,32 +133,14 @@ type TagsResponse {
   tags: [String]!
 }
 
-type UpdateArticle {
-  body: String
-  description: String
-  title: String
-}
-
 input UpdateArticleInput {
   body: String
   description: String
   title: String
 }
 
-type UpdateArticleRequest {
-  article: UpdateArticle!
-}
-
 input UpdateArticleRequestInput {
   article: UpdateArticleInput!
-}
-
-type UpdateUser {
-  bio: String
-  email: String
-  image: String
-  token: String
-  username: String
 }
 
 input UpdateUserInput {
@@ -213,10 +149,6 @@ input UpdateUserInput {
   image: String
   token: String
   username: String
-}
-
-type UpdateUserRequest {
-  user: UpdateUser!
 }
 
 input UpdateUserRequestInput {
