@@ -33,7 +33,7 @@ sub _apply_modifier {
 
 sub _remove_modifiers {
   my ($typespec) = @_;
-  return $typespec->{type} if ref $typespec eq 'HASH';
+  return _remove_modifiers($typespec->{type}) if ref $typespec eq 'HASH';
   return $typespec if ref $typespec ne 'ARRAY';
   _remove_modifiers($typespec->[1]);
 }
