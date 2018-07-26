@@ -1,5 +1,9 @@
 Revision history for Perl extension GraphQL-Plugin-Convert-OpenAPI
 
+0.15	Thu 26 Jul 23:03:53 BST 2018
+ - CI coverage now works
+ - if local-full.t fails, re-run query with GRAPHQL_DEBUG=1
+
 0.14	Mon 23 Jul 06:15:25 BST 2018
  - schema now only include ones used
  - CI improvements including coverage
