@@ -4,10 +4,10 @@ perl:
   - "5.14.0"
 matrix:
   include:
-    - perl: "5.22.0"
+    - perl: "5.26"
       env: AUTHOR_TESTING=1 RELEASE_TESTING=1
     # separate from author testing else cover_db blows up xt/manifest.t
-    - perl: "5.22.0"
+    - perl: "5.26"
       env: COVERAGE=1
 before_install:
   - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
