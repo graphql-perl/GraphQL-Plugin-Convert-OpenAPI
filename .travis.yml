@@ -14,7 +14,7 @@ before_install:
   - build-perl
   - local-lib cache
   - perl -V
-  - [ "$AUTHOR_TESTING" = 1 ] && prove -l xt
+  - if [ "$AUTHOR_TESTING" = 1 ]; then prove -l xt; fi
   - build-dist
   - cd $BUILD_DIR             # $BUILD_DIR is set by the build-dist command
 install:
