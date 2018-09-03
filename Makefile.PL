@@ -60,7 +60,7 @@ sub MY::postamble {
   <<EOF;
 pure_all :: README.md
 
-README.md : lib/GraphQL/Plugin/Convert/OpenAPI.pm
+README.md : \$(VERSION_FROM)
 \tpod2markdown \$< >\$\@
 EOF
 }
