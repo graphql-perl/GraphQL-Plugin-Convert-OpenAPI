@@ -1,4 +1,5 @@
 MANIFEST.SKIP
+^cover_db\/
 MANIFEST.bak
 .git\/
 ^.gitignore
