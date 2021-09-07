@@ -8,7 +8,7 @@ use GraphQL::Debug qw(_debug);
 use JSON::Validator::OpenAPI::Mojolicious;
 use OpenAPI::Client;
 
-our $VERSION = "0.19";
+our $VERSION = "0.20";
 use constant DEBUG => $ENV{GRAPHQL_DEBUG};
 
 my %TYPEMAP = (

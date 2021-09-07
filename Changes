@@ -1,3 +1,4 @@
+0.20 2021-09-07
 - deal with GraphQL now not loading GraphQL::Plugin::Type::DateTime by default
 
 0.19	Fri  8 Feb 23:21:21 GMT 2019
