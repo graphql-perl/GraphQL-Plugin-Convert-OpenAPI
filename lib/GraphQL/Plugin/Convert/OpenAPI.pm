@@ -3,6 +3,7 @@ use 5.008001;
 use strict;
 use warnings;
 use GraphQL::Schema;
+use GraphQL::Plugin::Type::DateTime;
 use GraphQL::Debug qw(_debug);
 use JSON::Validator::OpenAPI::Mojolicious;
 use OpenAPI::Client;
