@@ -5,7 +5,7 @@ use warnings;
 use GraphQL::Schema;
 use GraphQL::Plugin::Type::DateTime;
 use GraphQL::Debug qw(_debug);
-use JSON::Validator::OpenAPI::Mojolicious;
+use JSON::Validator;
 use OpenAPI::Client;
 
 our $VERSION = "0.21";
@@ -497,9 +497,7 @@ sub _walk_type {
 sub to_graphql {
   my ($class, $spec, $app) = @_;
   my %appargs = (app => $app) if $app;
-  my $openapi_schema = JSON::Validator::OpenAPI::Mojolicious->new(
-    %appargs
-  )->schema($spec)->schema;
+  my $openapi_schema = JSON::Validator->new->schema($spec)->schema;
   DEBUG and _debug('OpenAPI.schema', $openapi_schema);
   my $defs = $openapi_schema->get("/definitions");
   my @ast;
