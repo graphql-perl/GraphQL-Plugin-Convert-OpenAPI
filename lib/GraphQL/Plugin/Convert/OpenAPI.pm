@@ -576,7 +576,7 @@ GraphQL::Plugin::Convert::OpenAPI - convert OpenAPI schema to GraphQL schema
 =head1 DESCRIPTION
 
 This module implements the L<GraphQL::Plugin::Convert> API to convert
-a L<JSON::Validator::OpenAPI::Mojolicious> specification to L<GraphQL::Schema> etc.
+a L<JSON::Validator> specification to L<GraphQL::Schema> etc.
 
 It uses, from the given API spec:
 

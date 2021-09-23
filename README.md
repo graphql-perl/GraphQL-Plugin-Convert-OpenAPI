@@ -21,7 +21,7 @@ GraphQL::Plugin::Convert::OpenAPI - convert OpenAPI schema to GraphQL schema
 # DESCRIPTION
 
 This module implements the [GraphQL::Plugin::Convert](https://metacpan.org/pod/GraphQL%3A%3APlugin%3A%3AConvert) API to convert
-a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3AOpenAPI%3A%3AMojolicious) specification to [GraphQL::Schema](https://metacpan.org/pod/GraphQL%3A%3ASchema) etc.
+a [JSON::Validator](https://metacpan.org/pod/JSON%3A%3AValidator) specification to [GraphQL::Schema](https://metacpan.org/pod/GraphQL%3A%3ASchema) etc.
 
 It uses, from the given API spec:
 
